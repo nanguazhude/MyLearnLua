@@ -10,7 +10,7 @@
 #include "lprefix.hpp"
 
 
-#include <stddef.h>
+#include <cstddef>
 
 #include "lua.hpp"
 

@@ -10,8 +10,8 @@
 #include "lprefix.hpp"
 
 
-#include <locale.h>
-#include <string.h>
+#include <clocale>
+#include <cstring>
 
 #include "lua.hpp"
 

@@ -10,9 +10,9 @@
 #include "lprefix.hpp"
 
 
-#include <setjmp.h>
-#include <stdlib.h>
-#include <string.h>
+//#include <csetjmp>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.hpp"
 

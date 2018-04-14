@@ -10,8 +10,8 @@
 #include "lprefix.hpp"
 
 
-#include <stdlib.h>
-#include <math.h>
+#include <cstdlib>
+#include <cmath>
 
 #include "lua.hpp"
 

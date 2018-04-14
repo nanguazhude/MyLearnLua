@@ -9,8 +9,8 @@
 #define lauxlib_h
 
 
-#include <stddef.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdio>
 
 #include "lua.hpp"
 
