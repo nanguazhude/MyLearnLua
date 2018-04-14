@@ -266,7 +266,7 @@ namespace {
 		}
 
 		void print_value_lightuserdata() {
-			return $Writer.write(u8R"(lightuserdata)"sv);
+			return $Writer.write(u8R"("lightuserdata")"sv);
 		}
 
 		void print_value_number() {
@@ -296,7 +296,7 @@ namespace {
 )"sv);
 		}
 		void print_table_end() {
-			$Writer.write(u8R"( }
+			$Writer.write(u8R"( } ;
 )"sv);
 		}
 
@@ -316,39 +316,29 @@ namespace {
 				while (lua_next(*this, $UserTableIndex)) {
 					const auto varType = lua_type(*this, $UserValueIndex);
 					switch (varType) {
-					case  LUA_TNONE: {
-						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
-						this->print_value_none();
-						this->print_endl();
-					}break;
-					case  LUA_TNIL: {
-						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
-						this->print_value_nil();
-						this->print_endl();
-					}break;
+					case  LUA_TNONE: {/*跳过none*/ break; }break;
+					case  LUA_TNIL: { /*跳过nil*/break; } break;
 					case  LUA_TBOOLEAN: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue) this->print_equal();
 						this->print_value_bool();
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_lightuserdata();
 						this->print_endl();
 					}break;
 					case  LUA_TNUMBER: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_number();
 						this->print_endl();
 					}break;
 					case  LUA_TSTRING: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_string();
 						this->print_endl();
 					}break;
@@ -359,25 +349,25 @@ namespace {
 					}break;
 					case  LUA_TFUNCTION: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_function();
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_userdata();
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_thread();
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
 						if (false == this->print_name(&varCurrent))break;
-						this->print_equal();
+						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_numtags();
 						this->print_endl();
 					}break;
