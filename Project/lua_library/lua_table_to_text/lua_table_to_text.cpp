@@ -2,6 +2,7 @@
 #include "../lua.hpp"
 
 #include <list>
+#include <array>
 #include <memory>
 #include <string>
 #include <cstddef>
@@ -22,8 +23,15 @@ namespace {
 	constexpr int inline concept_stack_min_size() { return 16; }
 	/* 临时表最小大小 */
 	constexpr int inline concept_min_tmp_table_size() { return 128; }
+	/* 临时缓存区大小 */
+	constexpr int inline concept_tmp_buffer_size() { return 512; }
 
-	template<typename WType/* WType w; w.write(const string_view &); */>
+	class WType {
+	public:
+		void inline write(const string_view &) {}
+	};
+
+	//template<typename WType/* WType w; w.write(const string_view &); */>
 	class LuaLock {
 	public:
 		lua_State * $L;
@@ -36,6 +44,7 @@ namespace {
 		int $UserValueIndex;
 		int $CurrentTableIndex = 1;
 		std::remove_cv_t<std::remove_reference_t<WType>/**/> $Writer;
+		std::array<char, concept_tmp_buffer_size() > $TmpStringBuffer;
 		class TableItem {
 		public:
 			int const $IndexInTmpTable;
@@ -46,6 +55,11 @@ namespace {
 			inline void destory(const LuaLock & arg) {
 				lua_pushnil(arg);
 				lua_rawseti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+			}
+
+			inline void get_table_name(const LuaLock & arg) {
+				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+				lua_rawgeti(arg, -1, 3);
 			}
 
 			template<bool isCreate >
@@ -118,6 +132,16 @@ namespace {
 		list< TableItem > $ItemTables;
 	public:
 
+		/* int to string */
+		std::string_view int_to_string(lua_Integer data) {
+			return {};
+		}
+
+		/*double to string*/
+		std::string_view double_to_string(lua_Number data) {
+			return {};
+		}
+
 		/* 将字符串加载到Lua栈 */
 		inline void push_string(const string_view & s) {
 			lua_pushlstring($L, s.data(), s.size());
@@ -183,19 +207,79 @@ namespace {
 			$ItemTables.emplace_back(++$CurrentTableIndex).push<true>(*this);
 		}
 
-		void print_name(TableItem*) {}
-		void print_equal() {}
-		void print_value_none() {}
-		void print_value_nil() {}
-		void print_value_bool() {}
-		void print_value_lightuserdata() {}
-		void print_value_number() {}
+		/*just print value name*/
+		bool print_name(TableItem*arg) {
+			arg->get_table_name(*this);
+			const auto varType = lua_type(*this, -1);
+
+			if (LUA_TNUMBER == varType) {
+				int n;
+				if (lua_isinteger(*this, -1)) {
+					auto d = lua_tointegerx(*this, -1, &n);
+					return ($Writer.write(int_to_string(d)), true);
+				}
+				else {
+					auto d = lua_tonumberx(*this, -1, &n);
+					return ($Writer.write(double_to_string(d)), true);
+				}
+			}
+
+			std::size_t n;
+			auto d = lua_tolstring(*this, -1, &n);
+			if (n > 0) {
+				return ($Writer.write({ d,n }), true);
+			}
+			else {
+				return false;
+			}
+
+		}
+		void print_equal() { 
+			return $Writer.write(u8R"( = )"sv);
+		}
+
+		void print_value_none() {
+			return $Writer.write(u8R"(nil)"sv);
+		}
+
+		void print_value_nil() {
+			return $Writer.write(u8R"(nil)"sv);
+		}
+
+		void print_value_bool() {
+			if (lua_toboolean(*this, $UserValueIndex)) {
+				return $Writer.write(u8R"(true)"sv);
+			}
+			else {
+				return $Writer.write(u8R"(false)"sv);
+			}
+		}
+
+		void print_value_lightuserdata() {
+			return $Writer.write(u8R"(lightuserdata)"sv);
+		}
+
+		void print_value_number() {
+			int n;
+			if (lua_isinteger(*this, $UserValueIndex)) {
+				auto d = lua_tointegerx(*this, $UserValueIndex, &n);
+				return $Writer.write(int_to_string(d));
+			}
+			else {
+				auto d = lua_tonumberx(*this, $UserValueIndex, &n);
+				return $Writer.write(double_to_string(d));
+			}
+		}
+
 		void print_value_string() {}
 		void print_value_function() {}
 		void print_value_userdata() {}
 		void print_value_thread() {}
 		void print_value_numtags() {}
-		void print_endl() {}
+		void print_endl() {
+			$Writer.write(u8R"( ;
+)"sv);
+		}
 
 		void print_table(const string_view & argTableName) {
 			this->clear(argTableName);
@@ -210,37 +294,37 @@ namespace {
 					const auto varType = lua_type(*this, $UserValueIndex);
 					switch (varType) {
 					case  LUA_TNONE: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_none();
 						this->print_endl();
 					}break;
 					case  LUA_TNIL: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_nil();
 						this->print_endl();
 					}break;
 					case  LUA_TBOOLEAN: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_bool();
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_lightuserdata();
 						this->print_endl();
 					}break;
 					case  LUA_TNUMBER: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_number();
 						this->print_endl();
 					}break;
 					case  LUA_TSTRING: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_string();
 						this->print_endl();
@@ -251,30 +335,31 @@ namespace {
 						goto next_table;
 					}break;
 					case  LUA_TFUNCTION: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_function();
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_userdata();
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_thread();
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
-						this->print_name(&varCurrent);
+						if (false == this->print_name(&varCurrent))break;
 						this->print_equal();
 						this->print_value_numtags();
 						this->print_endl();
 					}break;
-					}
+					}/*switch*/
+					lua_settop(*this,$UserKeyIndex);
 				}
 			}
 
