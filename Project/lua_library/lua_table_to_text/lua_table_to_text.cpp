@@ -47,10 +47,13 @@ namespace {
 		std::array<char, concept_tmp_buffer_size() > $TmpStringBuffer;
 		class TableItem {
 		public:
+			TableItem * const $Parent ;
 			int const $IndexInTmpTable;
+			int $LastIndex = 0;
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
-			TableItem(const int & arg) :$IndexInTmpTable(arg) {}
+			
+			TableItem(TableItem * P,const int & arg) :$Parent(P),$IndexInTmpTable(arg) {}
 
 			inline void destory(const LuaLock & arg) {
 				lua_pushnil(arg);
@@ -204,7 +207,7 @@ namespace {
 			lua_pushvalue($L, $TableIndex);
 			push_string(argTableName);
 			lua_pushvalue($L, $TableIndex);
-			$ItemTables.emplace_back(++$CurrentTableIndex).push<true>(*this);
+			$ItemTables.emplace_back(nullptr,++$CurrentTableIndex).push<true>(*this);
 		}
 
 		/*just print value name*/
@@ -330,7 +333,7 @@ namespace {
 						this->print_endl();
 					}break;
 					case  LUA_TTABLE: {
-						$ItemTables.emplace_back(++$CurrentTableIndex).push<true>(*this);
+						$ItemTables.emplace_back(&varCurrent,++$CurrentTableIndex).push<true>(*this);
 						varCurrent.push<false>(*this);
 						goto next_table;
 					}break;
