@@ -1,3 +1,6 @@
+DEFINES += LUA_BUILD_AS_DLL
+DEFINES += LUA_CORE
+DEFINES += LUA_LIB
 
 QT       -= core 
 QT       -= gui
@@ -5,6 +8,7 @@ QT       -= gui
 TEMPLATE = lib
 
 include( $$PWD/lua.pri ) 
+include( $$PWD/lua_source.pri ) 
 
 #CONFIG += c++17
 
