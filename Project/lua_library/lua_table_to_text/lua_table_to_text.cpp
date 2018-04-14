@@ -1,4 +1,5 @@
-﻿
+﻿#define QUICK_CHECK_CODE
+
 #include "../lua.hpp"
 
 #include <list>
@@ -10,6 +11,10 @@
 #include <string_view>
 #include <type_traits>
 #include <memory_resource>
+
+#if defined(QUICK_CHECK_CODE)
+#include <iostream>
+#endif
 
 using namespace std::string_view_literals;
 
@@ -26,12 +31,14 @@ namespace {
 	/* 临时缓存区大小 */
 	constexpr int inline concept_tmp_buffer_size() { return 512; }
 
+#if defined(QUICK_CHECK_CODE)
 	class WType {
 	public:
-		void inline write(const string_view &) {}
+		void inline write(const string_view &a) { std::cout << a; }
 	};
-
-	//template<typename WType/* WType w; w.write(const string_view &); */>
+#else
+	template<typename WType/* WType w; w.write(const string_view &); */>
+#endif
 	class LuaLock {
 	public:
 		lua_State * $L;
@@ -47,13 +54,13 @@ namespace {
 		std::array<char, concept_tmp_buffer_size() > $TmpStringBuffer;
 		class TableItem {
 		public:
-			TableItem * const $Parent ;
+			TableItem * const $Parent;
 			int const $IndexInTmpTable;
 			int $LastIndex = 0;
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
-			
-			TableItem(TableItem * P,const int & arg) :$Parent(P),$IndexInTmpTable(arg) {}
+
+			TableItem(TableItem * P, const int & arg) :$Parent(P), $IndexInTmpTable(arg) {}
 
 			inline void destory(const LuaLock & arg) {
 				lua_pushnil(arg);
@@ -207,28 +214,28 @@ namespace {
 			lua_pushvalue($L, $TableIndex);
 			push_string(argTableName);
 			lua_pushvalue($L, $TableIndex);
-			$ItemTables.emplace_back(nullptr,++$CurrentTableIndex).push<true>(*this);
+			$ItemTables.emplace_back(nullptr, ++$CurrentTableIndex).push<true>(*this);
 		}
 
 		/*just print value name*/
 		bool print_name(TableItem*arg) {
-			arg->get_table_name(*this);
-			const auto varType = lua_type(*this, -1);
+
+			const auto varType = lua_type(*this, $UserKeyIndex);
 
 			if (LUA_TNUMBER == varType) {
 				int n;
-				if (lua_isinteger(*this, -1)) {
-					auto d = lua_tointegerx(*this, -1, &n);
+				if (lua_isinteger(*this, $UserKeyIndex)) {
+					auto d = lua_tointegerx(*this, $UserKeyIndex, &n);
 					return ($Writer.write(int_to_string(d)), true);
 				}
 				else {
-					auto d = lua_tonumberx(*this, -1, &n);
+					auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
 					return ($Writer.write(double_to_string(d)), true);
 				}
 			}
 
 			std::size_t n;
-			auto d = lua_tolstring(*this, -1, &n);
+			auto d = lua_tolstring(*this, $UserKeyIndex, &n);
 			if (n > 0) {
 				return ($Writer.write({ d,n }), true);
 			}
@@ -237,7 +244,7 @@ namespace {
 			}
 
 		}
-		void print_equal() { 
+		void print_equal() {
 			return $Writer.write(u8R"( = )"sv);
 		}
 
@@ -284,14 +291,27 @@ namespace {
 )"sv);
 		}
 
-		void print_table(const string_view & argTableName) {
+		void print_table_begin() {
+			$Writer.write(u8R"( {
+)"sv);
+		}
+		void print_table_end() {
+			$Writer.write(u8R"( }
+)"sv);
+		}
+
+		void print_table(const string_view & argTableName) try {
 			this->clear(argTableName);
 
 		next_table:
 			while (false == $ItemTables.empty()) {
 				auto & varCurrent = *$ItemTables.rbegin();
+
+				/*begin of a table*/
 				if (varCurrent.$IsCreate) {
+					print_table_begin();
 				}
+
 				varCurrent.pop(*this);
 				while (lua_next(*this, $UserTableIndex)) {
 					const auto varType = lua_type(*this, $UserValueIndex);
@@ -333,7 +353,7 @@ namespace {
 						this->print_endl();
 					}break;
 					case  LUA_TTABLE: {
-						$ItemTables.emplace_back(&varCurrent,++$CurrentTableIndex).push<true>(*this);
+						$ItemTables.emplace_back(&varCurrent, ++$CurrentTableIndex).push<true>(*this);
 						varCurrent.push<false>(*this);
 						goto next_table;
 					}break;
@@ -362,14 +382,22 @@ namespace {
 						this->print_endl();
 					}break;
 					}/*switch*/
-					lua_settop(*this,$UserKeyIndex);
+					lua_settop(*this, $UserKeyIndex);
+				}/*whihle*/
+
+				{/*End of a table*/
+					print_table_end();
+					--$CurrentTableIndex;
+					$ItemTables.rbegin()->destory(*this);
+					$ItemTables.pop_back();
 				}
-			}
 
-			--$CurrentTableIndex;
-			$ItemTables.rbegin()->destory(*this);
-			$ItemTables.pop_back();
+			}/*while*/
 
+		}
+		catch (...) {/*意外的异常？？？*/
+			$ReturnClearIndex = $ErrorStringIndex;
+			throw;
 		}
 
 		operator lua_State * () const { return $L; }
