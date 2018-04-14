@@ -33,4 +33,4 @@ HEADERS += \
 FORMS += \
         MainWindow.ui
 
-include( $$PWD/../lua_library/lua.pri )
+#include( $$PWD/../lua_library/lua.pri )
