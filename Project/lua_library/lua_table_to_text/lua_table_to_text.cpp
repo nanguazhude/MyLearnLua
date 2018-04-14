@@ -226,11 +226,13 @@ namespace {
 				int n;
 				if (lua_isinteger(*this, $UserKeyIndex)) {
 					auto d = lua_tointegerx(*this, $UserKeyIndex, &n);
-					return ($Writer.write(int_to_string(d)), true);
+					$Writer.write(u8R"([)"sv);
+					return ($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
 				}
 				else {
 					auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
-					return ($Writer.write(double_to_string(d)), true);
+					$Writer.write(u8R"([)"sv);
+					return ($Writer.write(double_to_string(d)), $Writer.write(u8R"(])"sv), true);
 				}
 			}
 
