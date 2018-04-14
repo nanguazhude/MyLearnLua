@@ -58,3 +58,7 @@ SOURCES += $$PWD/lundump.cpp
 SOURCES += $$PWD/lutf8lib.cpp
 SOURCES += $$PWD/lvm.cpp
 SOURCES += $$PWD/lzio.cpp
+
+HEADERS += $$PWD/lua_cplusplus_exception/lua_cplusplus_exception.hpp
+SOURCES += $$PWD/lua_table_to_text/lua_table_to_text.cpp
+
