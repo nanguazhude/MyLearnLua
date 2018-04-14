@@ -6,7 +6,9 @@
 
 
 #define linit_c
+#ifndef LUA_LIB
 #define LUA_LIB
+#endif
 
 /*
 ** If you embed Lua in your program and need to open the standard

@@ -5,7 +5,9 @@
 */
 
 #define ltable_c
+#ifndef LUA_CORE
 #define LUA_CORE
+#endif
 
 #include "lprefix.hpp"
 
