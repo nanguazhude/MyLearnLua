@@ -281,11 +281,24 @@ namespace {
 			}
 		}
 
-		void print_value_string() {}
-		void print_value_function() {}
-		void print_value_userdata() {}
-		void print_value_thread() {}
-		void print_value_numtags() {}
+		void print_value_string() {
+		}
+
+		void print_value_function() {
+			return $Writer.write(u8R"(""function"")"sv);
+		}
+
+		void print_value_userdata() {
+		}
+
+		void print_value_thread() {
+			return $Writer.write(u8R"(""thread"")"sv);
+		}
+
+		void print_value_numtags() {
+			return $Writer.write(u8R"("numtags")"sv);
+		}
+
 		void print_endl() {
 			$Writer.write(u8R"( ;
 )"sv);
@@ -325,6 +338,7 @@ namespace {
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
+						/*跳过 light user data*/ break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_lightuserdata();
@@ -348,24 +362,28 @@ namespace {
 						goto next_table;
 					}break;
 					case  LUA_TFUNCTION: {
+						/*跳过 function*/ break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_function();
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
+						/*跳过 user data*/ break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_userdata();
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
+						/*跳过 thread*/ break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_thread();
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
+						/*跳过 numtags*/ break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_numtags();
