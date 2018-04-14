@@ -28,7 +28,7 @@
 
 
 /* true when 't' is using 'dummynode' as its hash part */
-#define isdummy(t)		((t)->lastfree == NULL)
+#define isdummy(t)		((t)->lastfree == nullptr)
 
 
 /* allocated size for hash nodes */

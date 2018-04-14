@@ -35,7 +35,7 @@ static lua_Integer u_posrelat (lua_Integer pos, size_t len) {
 
 
 /*
-** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
+** Decode one UTF-8 sequence, returning nullptr if byte sequence is invalid.
 */
 static const char *utf8_decode (const char *o, int *val) {
   static const unsigned int limits[] = {0xFF, 0x7F, 0x7FF, 0xFFFF};
@@ -49,13 +49,13 @@ static const char *utf8_decode (const char *o, int *val) {
     while (c & 0x40) {  /* still have continuation bytes? */
       int cc = s[++count];  /* read next byte */
       if ((cc & 0xC0) != 0x80)  /* not a continuation byte? */
-        return NULL;  /* invalid byte sequence */
+        return nullptr;  /* invalid byte sequence */
       res = (res << 6) | (cc & 0x3F);  /* add lower 6 bits from cont. byte */
       c <<= 1;  /* to test next bit */
     }
     res |= ((c & 0x7F) << (count * 5));  /* add first byte */
     if (count > 3 || res > MAXUNICODE || res <= limits[count])
-      return NULL;  /* invalid byte sequence */
+      return nullptr;  /* invalid byte sequence */
     s += count;  /* skip continuation bytes read */
   }
   if (val) *val = res;
@@ -79,8 +79,8 @@ static int utflen (lua_State *L) {
   luaL_argcheck(L, --posj < (lua_Integer)len, 3,
                    "final position out of string");
   while (posi <= posj) {
-    const char *s1 = utf8_decode(s + posi, NULL);
-    if (s1 == NULL) {  /* conversion error? */
+    const char *s1 = utf8_decode(s + posi, nullptr);
+    if (s1 == nullptr) {  /* conversion error? */
       lua_pushnil(L);  /* return nil ... */
       lua_pushinteger(L, posi + 1);  /* ... and current position */
       return 2;
@@ -116,7 +116,7 @@ static int codepoint (lua_State *L) {
   for (s += posi - 1; s < se;) {
     int code;
     s = utf8_decode(s, &code);
-    if (s == NULL)
+    if (s == nullptr)
       return luaL_error(L, "invalid UTF-8 code");
     lua_pushinteger(L, code);
     n++;
@@ -213,7 +213,7 @@ static int iter_aux (lua_State *L) {
   else {
     int code;
     const char *next = utf8_decode(s + n, &code);
-    if (next == NULL || iscont(next))
+    if (next == nullptr || iscont(next))
       return luaL_error(L, "invalid UTF-8 code");
     lua_pushinteger(L, n + 1);
     lua_pushinteger(L, code);
@@ -242,8 +242,8 @@ static const luaL_Reg funcs[] = {
   {"len", utflen},
   {"codes", iter_codes},
   /* placeholders */
-  {"charpattern", NULL},
-  {NULL, NULL}
+  {"charpattern", nullptr},
+  {nullptr, nullptr}
 };
 
 

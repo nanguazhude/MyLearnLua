@@ -74,11 +74,11 @@ void luaS_resize (lua_State *L, int newsize) {
   if (newsize > tb->size) {  /* grow table if needed */
     luaM_reallocvector(L, tb->hash, tb->size, newsize, TString *);
     for (i = tb->size; i < newsize; i++)
-      tb->hash[i] = NULL;
+      tb->hash[i] = nullptr;
   }
   for (i = 0; i < tb->size; i++) {  /* rehash */
     TString *p = tb->hash[i];
-    tb->hash[i] = NULL;
+    tb->hash[i] = nullptr;
     while (p) {  /* for each node in the list */
       TString *hnext = p->u.hnext;  /* save next */
       unsigned int h = lmod(p->hash, newsize);  /* new position */
@@ -89,7 +89,7 @@ void luaS_resize (lua_State *L, int newsize) {
   }
   if (newsize < tb->size) {  /* shrink table if needed */
     /* vanishing slice should be empty */
-    lua_assert(tb->hash[newsize] == NULL && tb->hash[tb->size - 1] == NULL);
+    lua_assert(tb->hash[newsize] == nullptr && tb->hash[tb->size - 1] == nullptr);
     luaM_reallocvector(L, tb->hash, tb->size, newsize, TString *);
   }
   tb->size = newsize;
@@ -169,8 +169,8 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   global_State *g = G(L);
   unsigned int h = luaS_hash(str, l, g->seed);
   TString **list = &g->strt.hash[lmod(h, g->strt.size)];
-  lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
-  for (ts = *list; ts != NULL; ts = ts->u.hnext) {
+  lua_assert(str != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
+  for (ts = *list; ts != nullptr; ts = ts->u.hnext) {
     if (l == ts->shrlen &&
         (memcmp(str, getstr(ts), l * sizeof(char)) == 0)) {
       /* found! */
@@ -241,7 +241,7 @@ Udata *luaS_newudata (lua_State *L, size_t s) {
   o = luaC_newobj(L, LUA_TUSERDATA, sizeludata(s));
   u = gco2u(o);
   u->len = s;
-  u->metatable = NULL;
+  u->metatable = nullptr;
   setuservalue(L, u, luaO_nilobject);
   return u;
 }

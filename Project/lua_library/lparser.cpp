@@ -165,7 +165,7 @@ static int registerlocalvar (LexState *ls, TString *varname) {
   luaM_growvector(ls->L, f->locvars, fs->nlocvars, f->sizelocvars,
                   LocVar, SHRT_MAX, "local variables");
   while (oldsize < f->sizelocvars)
-    f->locvars[oldsize++].varname = NULL;
+    f->locvars[oldsize++].varname = nullptr;
   f->locvars[fs->nlocvars].varname = varname;
   luaC_objbarrier(ls->L, f, varname);
   return fs->nlocvars++;
@@ -232,7 +232,7 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   luaM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
                   Upvaldesc, MAXUPVAL, "upvalues");
   while (oldsize < f->sizeupvalues)
-    f->upvalues[oldsize++].name = NULL;
+    f->upvalues[oldsize++].name = nullptr;
   f->upvalues[fs->nups].instack = (v->k == VLOCAL);
   f->upvalues[fs->nups].idx = cast_byte(v->u.info);
   f->upvalues[fs->nups].name = name;
@@ -268,7 +268,7 @@ static void markupval (FuncState *fs, int level) {
   upvalue into all intermediate functions.
 */
 static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
-  if (fs == NULL)  /* no more levels? */
+  if (fs == nullptr)  /* no more levels? */
     init_exp(var, VVOID, 0);  /* default is global */
   else {
     int v = searchvar(fs, n);  /* look up locals at current level */
@@ -505,7 +505,7 @@ static Proto *addprototype (LexState *ls) {
     int oldsize = f->sizep;
     luaM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
     while (oldsize < f->sizep)
-      f->p[oldsize++] = NULL;
+      f->p[oldsize++] = nullptr;
   }
   f->p[fs->np++] = clp = luaF_newproto(L);
   luaC_objbarrier(L, f, clp);
@@ -541,7 +541,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->nlocvars = 0;
   fs->nactvar = 0;
   fs->firstlocal = ls->dyd->actvar.n;
-  fs->bl = NULL;
+  fs->bl = nullptr;
   f = fs->f;
   f->source = ls->source;
   f->maxstacksize = 2;  /* registers 0/1 are always valid */
@@ -567,7 +567,7 @@ static void close_func (LexState *ls) {
   f->sizelocvars = fs->nlocvars;
   luaM_reallocvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
   f->sizeupvalues = fs->nups;
-  lua_assert(fs->bl == NULL);
+  lua_assert(fs->bl == nullptr);
   ls->fs = fs->prev;
   luaC_checkGC(L);
 }
@@ -1491,7 +1491,7 @@ static void exprstat (LexState *ls) {
   struct LHS_assign v;
   suffixedexp(ls, &v.v);
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
-    v.prev = NULL;
+    v.prev = nullptr;
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */

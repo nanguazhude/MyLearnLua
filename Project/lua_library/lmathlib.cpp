@@ -384,11 +384,11 @@ static const luaL_Reg mathlib[] = {
   {"log10", math_log10},
 #endif
   /* placeholders */
-  {"pi", NULL},
-  {"huge", NULL},
-  {"maxinteger", NULL},
-  {"mininteger", NULL},
-  {NULL, NULL}
+  {"pi", nullptr},
+  {"huge", nullptr},
+  {"maxinteger", nullptr},
+  {"mininteger", nullptr},
+  {nullptr, nullptr}
 };
 
 

@@ -73,7 +73,7 @@ static int doargs(int argc, char* argv[])
 {
  int i;
  int version=0;
- if (argv[0]!=NULL && *argv[0]!=0) progname=argv[0];
+ if (argv[0]!=nullptr && *argv[0]!=0) progname=argv[0];
  for (i=1; i<argc; i++)
  {
   if (*argv[i]!='-')			/* end of options; keep it */
@@ -91,9 +91,9 @@ static int doargs(int argc, char* argv[])
   else if (IS("-o"))			/* output file */
   {
    output=argv[++i];
-   if (output==NULL || *output==0 || (*output=='-' && output[1]!=0))
+   if (output==nullptr || *output==0 || (*output=='-' && output[1]!=0))
     usage("'-o' needs argument");
-   if (IS("-")) output=NULL;
+   if (IS("-")) output=nullptr;
   }
   else if (IS("-p"))			/* parse only */
    dumping=0;
@@ -130,7 +130,7 @@ static const char* reader(lua_State *L, void *ud, size_t *size)
  else
  {
   *size=0;
-  return NULL;
+  return nullptr;
  }
 }
 
@@ -144,7 +144,7 @@ static const Proto* combine(lua_State* L, int n)
  {
   Proto* f;
   int i=n;
-  if (lua_load(L,reader,&i,"=(" PROGNAME ")",NULL)!=LUA_OK) fatal(lua_tostring(L,-1));
+  if (lua_load(L,reader,&i,"=(" PROGNAME ")",nullptr)!=LUA_OK) fatal(lua_tostring(L,-1));
   f=toproto(L,-1);
   for (i=0; i<n; i++)
   {
@@ -171,15 +171,15 @@ static int pmain(lua_State* L)
  if (!lua_checkstack(L,argc)) fatal("too many input files");
  for (i=0; i<argc; i++)
  {
-  const char* filename=IS("-") ? NULL : argv[i];
+  const char* filename=IS("-") ? nullptr : argv[i];
   if (luaL_loadfile(L,filename)!=LUA_OK) fatal(lua_tostring(L,-1));
  }
  f=combine(L,argc);
  if (listing) luaU_print(f,listing>1);
  if (dumping)
  {
-  FILE* D= (output==NULL) ? stdout : fopen(output,"wb");
-  if (D==NULL) cannot("open");
+  FILE* D= (output==nullptr) ? stdout : fopen(output,"wb");
+  if (D==nullptr) cannot("open");
   lua_lock(L);
   luaU_dump(L,f,writer,D,stripping);
   lua_unlock(L);
@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
  argc-=i; argv+=i;
  if (argc<=0) usage("no input files given");
  L=luaL_newstate();
- if (L==NULL) fatal("cannot create state: not enough memory");
+ if (L==nullptr) fatal("cannot create state: not enough memory");
  lua_pushcfunction(L,&pmain);
  lua_pushinteger(L,argc);
  lua_pushlightuserdata(L,argv);

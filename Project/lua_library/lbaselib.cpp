@@ -32,7 +32,7 @@ static int luaB_print (lua_State *L) {
     lua_pushvalue(L, i);   /* value to print */
     lua_call(L, 1, 1);
     s = lua_tolstring(L, -1, &l);  /* get result */
-    if (s == NULL)
+    if (s == nullptr)
       return luaL_error(L, "'tostring' must return a string to 'print'");
     if (i>1) lua_writestring("\t", 1);
     lua_writestring(s, l);
@@ -52,11 +52,11 @@ static const char *b_str2int (const char *s, int base, lua_Integer *pn) {
   if (*s == '-') { s++; neg = 1; }  /* handle signal */
   else if (*s == '+') s++;
   if (!isalnum((unsigned char)*s))  /* no digit? */
-    return NULL;
+    return nullptr;
   do {
     int digit = (isdigit((unsigned char)*s)) ? *s - '0'
                    : (toupper((unsigned char)*s) - 'A') + 10;
-    if (digit >= base) return NULL;  /* invalid numeral */
+    if (digit >= base) return nullptr;  /* invalid numeral */
     n = n * base + digit;
     s++;
   } while (isalnum((unsigned char)*s));
@@ -76,7 +76,7 @@ static int luaB_tonumber (lua_State *L) {
     else {
       size_t l;
       const char *s = lua_tolstring(L, 1, &l);
-      if (s != NULL && lua_stringtonumber(L, s) == l + 1)
+      if (s != nullptr && lua_stringtonumber(L, s) == l + 1)
         return 1;  /* successful conversion to number */
       /* else not a number */
     }
@@ -173,7 +173,7 @@ static int luaB_rawset (lua_State *L) {
 static int luaB_collectgarbage (lua_State *L) {
   static const char *const opts[] = {"stop", "restart", "collect",
     "count", "step", "setpause", "setstepmul",
-    "isrunning", NULL};
+    "isrunning", nullptr};
   static const int optsnum[] = {LUA_GCSTOP, LUA_GCRESTART, LUA_GCCOLLECT,
     LUA_GCCOUNT, LUA_GCSTEP, LUA_GCSETPAUSE, LUA_GCSETSTEPMUL,
     LUA_GCISRUNNING};
@@ -285,8 +285,8 @@ static int load_aux (lua_State *L, int status, int envidx) {
 
 
 static int luaB_loadfile (lua_State *L) {
-  const char *fname = luaL_optstring(L, 1, NULL);
-  const char *mode = luaL_optstring(L, 2, NULL);
+  const char *fname = luaL_optstring(L, 1, nullptr);
+  const char *mode = luaL_optstring(L, 2, nullptr);
   int env = (!lua_isnone(L, 3) ? 3 : 0);  /* 'env' index or 0 if no 'env' */
   int status = luaL_loadfilex(L, fname, mode);
   return load_aux(L, status, env);
@@ -322,7 +322,7 @@ static const char *generic_reader (lua_State *L, void *ud, size_t *size) {
   if (lua_isnil(L, -1)) {
     lua_pop(L, 1);  /* pop result */
     *size = 0;
-    return NULL;
+    return nullptr;
   }
   else if (!lua_isstring(L, -1))
     luaL_error(L, "reader function must return a string");
@@ -337,7 +337,7 @@ static int luaB_load (lua_State *L) {
   const char *s = lua_tolstring(L, 1, &l);
   const char *mode = luaL_optstring(L, 3, "bt");
   int env = (!lua_isnone(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
-  if (s != NULL) {  /* loading a string? */
+  if (s != nullptr) {  /* loading a string? */
     const char *chunkname = luaL_optstring(L, 2, s);
     status = luaL_loadbufferx(L, s, l, chunkname, mode);
   }
@@ -345,7 +345,7 @@ static int luaB_load (lua_State *L) {
     const char *chunkname = luaL_optstring(L, 2, "=(load)");
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
-    status = lua_load(L, generic_reader, NULL, chunkname, mode);
+    status = lua_load(L, generic_reader, nullptr, chunkname, mode);
   }
   return load_aux(L, status, env);
 }
@@ -360,7 +360,7 @@ static int dofilecont (lua_State *L, int d1, lua_KContext d2) {
 
 
 static int luaB_dofile (lua_State *L) {
-  const char *fname = luaL_optstring(L, 1, NULL);
+  const char *fname = luaL_optstring(L, 1, nullptr);
   lua_settop(L, 1);
   if (luaL_loadfile(L, fname) != LUA_OK)
     return lua_error(L);
@@ -445,7 +445,7 @@ static int luaB_xpcall (lua_State *L) {
 
 static int luaB_tostring (lua_State *L) {
   luaL_checkany(L, 1);
-  luaL_tolstring(L, 1, NULL);
+  luaL_tolstring(L, 1, nullptr);
   return 1;
 }
 
@@ -477,9 +477,9 @@ static const luaL_Reg base_funcs[] = {
   {"type", luaB_type},
   {"xpcall", luaB_xpcall},
   /* placeholders */
-  {"_G", NULL},
-  {"_VERSION", NULL},
-  {NULL, NULL}
+  {"_G", nullptr},
+  {"_VERSION", nullptr},
+  {nullptr, nullptr}
 };
 
 

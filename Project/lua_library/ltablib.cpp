@@ -257,7 +257,7 @@ typedef unsigned int IdxT;
 */
 static unsigned int l_randomizePivot (void) {
   clock_t c = clock();
-  time_t t = time(NULL);
+  time_t t = time(nullptr);
   unsigned int buff[sof(c) + sof(t)];
   unsigned int i, rnd = 0;
   memcpy(buff, &c, sof(c) * sizeof(unsigned int));
@@ -434,7 +434,7 @@ static const luaL_Reg tab_funcs[] = {
   {"remove", tremove},
   {"move", tmove},
   {"sort", sort},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 

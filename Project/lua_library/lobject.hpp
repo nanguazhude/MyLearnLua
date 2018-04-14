@@ -117,7 +117,7 @@ typedef struct lua_TValue {
 
 
 /* macro defining a nil value */
-#define NILCONSTANT	{NULL}, LUA_TNIL
+#define NILCONSTANT	{nullptr}, LUA_TNIL
 
 
 #define val_(o)		((o)->value_)
@@ -189,7 +189,7 @@ typedef struct lua_TValue {
 
 #define checkliveness(L,obj) \
 	lua_longassert(!iscollectable(obj) || \
-		(righttt(obj) && (L == NULL || !isdead(G(L),gcvalue(obj)))))
+		(righttt(obj) && (L == nullptr || !isdead(G(L),gcvalue(obj)))))
 
 
 /* Macros to set values */

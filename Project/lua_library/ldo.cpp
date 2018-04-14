@@ -159,9 +159,9 @@ static void correctstack (lua_State *L, TValue *oldstack) {
   CallInfo *ci;
   UpVal *up;
   L->top = (L->top - oldstack) + L->stack;
-  for (up = L->openupval; up != NULL; up = up->u.open.next)
+  for (up = L->openupval; up != nullptr; up = up->u.open.next)
     up->v = (up->v - oldstack) + L->stack;
-  for (ci = L->ci; ci != NULL; ci = ci->previous) {
+  for (ci = L->ci; ci != nullptr; ci = ci->previous) {
     ci->top = (ci->top - oldstack) + L->stack;
     ci->func = (ci->func - oldstack) + L->stack;
     if (isLua(ci))
@@ -210,7 +210,7 @@ void luaD_growstack (lua_State *L, int n) {
 static int stackinuse (lua_State *L) {
   CallInfo *ci;
   StkId lim = L->top;
-  for (ci = L->ci; ci != NULL; ci = ci->previous) {
+  for (ci = L->ci; ci != nullptr; ci = ci->previous) {
     if (lim < ci->top) lim = ci->top;
   }
   lua_assert(lim <= L->stack_last);
@@ -519,7 +519,7 @@ static void finishCcall (lua_State *L, int status) {
   CallInfo *ci = L->ci;
   int n;
   /* must have a continuation and must be able to call it */
-  lua_assert(ci->u.c.k != NULL && L->nny == 0);
+  lua_assert(ci->u.c.k != nullptr && L->nny == 0);
   /* error status can only happen in a protected call */
   lua_assert((ci->callstatus & CIST_YPCALL) || status == LUA_YIELD);
   if (ci->callstatus & CIST_YPCALL) {  /* was inside a pcall? */
@@ -546,7 +546,7 @@ static void finishCcall (lua_State *L, int status) {
 ** status is LUA_YIELD).
 */
 static void unroll (lua_State *L, void *ud) {
-  if (ud != NULL)  /* error status? */
+  if (ud != nullptr)  /* error status? */
     finishCcall(L, *(int *)ud);  /* finish 'lua_pcallk' callee */
   while (L->ci != &L->base_ci) {  /* something in the stack */
     if (!isLua(L->ci))  /* C function? */
@@ -565,11 +565,11 @@ static void unroll (lua_State *L, void *ud) {
 */
 static CallInfo *findpcall (lua_State *L) {
   CallInfo *ci;
-  for (ci = L->ci; ci != NULL; ci = ci->previous) {  /* search for a pcall */
+  for (ci = L->ci; ci != nullptr; ci = ci->previous) {  /* search for a pcall */
     if (ci->callstatus & CIST_YPCALL)
       return ci;
   }
-  return NULL;  /* no pending pcall */
+  return nullptr;  /* no pending pcall */
 }
 
 
@@ -581,7 +581,7 @@ static CallInfo *findpcall (lua_State *L) {
 static int recover (lua_State *L, int status) {
   StkId oldtop;
   CallInfo *ci = findpcall(L);
-  if (ci == NULL) return 0;  /* no recovery point */
+  if (ci == nullptr) return 0;  /* no recovery point */
   /* "finish" luaD_pcall */
   oldtop = restorestack(L, ci->extra);
   luaF_close(L, oldtop);
@@ -631,7 +631,7 @@ static void resume (lua_State *L, void *ud) {
     if (isLua(ci))  /* yielded inside a hook? */
       luaV_execute(L);  /* just continue running Lua code */
     else {  /* 'common' yield */
-      if (ci->u.c.k != NULL) {  /* does it have a continuation function? */
+      if (ci->u.c.k != nullptr) {  /* does it have a continuation function? */
         lua_unlock(L);
         n = (*ci->u.c.k)(L, LUA_YIELD, ci->u.c.ctx); /* call continuation */
         lua_lock(L);
@@ -640,7 +640,7 @@ static void resume (lua_State *L, void *ud) {
       }
       luaD_poscall(L, ci, firstArg, n);  /* finish 'luaD_precall' */
     }
-    unroll(L, NULL);  /* run continuation */
+    unroll(L, nullptr);  /* run continuation */
   }
 }
 
@@ -704,10 +704,10 @@ LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
   L->status = LUA_YIELD;
   ci->extra = savestack(L, ci->func);  /* save current 'func' */
   if (isLua(ci)) {  /* inside a hook? */
-    api_check(L, k == NULL, "hooks cannot continue after yielding");
+    api_check(L, k == nullptr, "hooks cannot continue after yielding");
   }
   else {
-    if ((ci->u.c.k = k) != NULL)  /* is there a continuation? */
+    if ((ci->u.c.k = k) != nullptr)  /* is there a continuation? */
       ci->u.c.ctx = ctx;  /* save context */
     ci->func = L->top - nresults - 1;  /* protect stack below results */
     luaD_throw(L, LUA_YIELD);
@@ -755,7 +755,7 @@ struct SParser {  /* data to 'f_parser' */
 
 
 static void checkmode (lua_State *L, const char *mode, const char *x) {
-  if (mode && strchr(mode, x[0]) == NULL) {
+  if (mode && strchr(mode, x[0]) == nullptr) {
     luaO_pushfstring(L,
        "attempt to load a %s chunk (mode is '%s')", x, mode);
     luaD_throw(L, LUA_ERRSYNTAX);
@@ -786,9 +786,9 @@ int luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
   int status;
   L->nny++;  /* cannot yield during parsing */
   p.z = z; p.name = name; p.mode = mode;
-  p.dyd.actvar.arr = NULL; p.dyd.actvar.size = 0;
-  p.dyd.gt.arr = NULL; p.dyd.gt.size = 0;
-  p.dyd.label.arr = NULL; p.dyd.label.size = 0;
+  p.dyd.actvar.arr = nullptr; p.dyd.actvar.size = 0;
+  p.dyd.gt.arr = nullptr; p.dyd.gt.size = 0;
+  p.dyd.label.arr = nullptr; p.dyd.label.size = 0;
   luaZ_initbuffer(L, &p.buff);
   status = luaD_pcall(L, f_parser, &p, savestack(L, L->top), L->errfunc);
   luaZ_freebuffer(L, &p.buff);
