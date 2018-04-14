@@ -1,5 +1,6 @@
 
 DEFINES += LUA_BUILD_AS_DLL
+INCLUDEPATH += $$PWD
 
 HEADERS += $$PWD/lapi.hpp
 HEADERS += $$PWD/lauxlib.hpp

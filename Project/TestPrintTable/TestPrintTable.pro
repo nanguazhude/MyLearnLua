@@ -33,4 +33,12 @@ HEADERS += \
 FORMS += \
         MainWindow.ui
 
-#include( $$PWD/../lua_library/lua.pri )
+include( $$PWD/../lua_library/lua.pri )
+CONFIG(debug,debug|release){
+        DESTDIR = $$PWD/../../debug
+        LIBS += -L$$DESTDIR -llua_libraryd
+}else{
+        DESTDIR = $$PWD/../../release
+        LIBS += -L$$DESTDIR -llua_library
+}
+
