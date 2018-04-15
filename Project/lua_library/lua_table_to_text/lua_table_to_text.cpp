@@ -30,7 +30,7 @@ namespace {
 	/* 临时表最小大小 */
 	constexpr int inline concept_min_tmp_table_size() { return 128; }
 	/* 临时缓存区大小 */
-	constexpr int inline concept_tmp_buffer_size() { return 512; }
+	constexpr int inline concept_tmp_buffer_size() { return 256; }
 	/* 连续=的最大优化值 */
 	constexpr int inline max_equal_size() { return 256; }
 #if defined(QUICK_CHECK_CODE)
