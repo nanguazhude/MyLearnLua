@@ -144,7 +144,63 @@ namespace {
 
 		/* int to string */
 		std::string_view int_to_string(lua_Integer data) {
-			return {};
+			switch (data) {
+			case -10: return u8R"(-10)"sv;
+			case -9: return u8R"(-9)"sv;
+			case -8: return u8R"(-8)"sv;
+			case -7: return u8R"(-7)"sv;
+			case -6: return u8R"(-6)"sv;
+			case -5: return u8R"(-5)"sv;
+			case -4: return u8R"(-4)"sv;
+			case -3: return u8R"(-3)"sv;
+			case -2: return u8R"(-2)"sv;
+			case -1: return u8R"(-1)"sv;
+			case 0: return u8R"(0)"sv;
+			case 1: return u8R"(1)"sv;
+			case 2: return u8R"(2)"sv;
+			case 3: return u8R"(3)"sv;
+			case 4: return u8R"(4)"sv;
+			case 5: return u8R"(5)"sv;
+			case 6: return u8R"(6)"sv;
+			case 7: return u8R"(7)"sv;
+			case 8: return u8R"(8)"sv;
+			case 9: return u8R"(9)"sv;
+			case 10: return u8R"(10)"sv;
+			}
+
+			auto varPointerEnd = &(*$TmpStringBuffer.rbegin());
+			auto varPointer = varPointerEnd;
+			const bool isN = data < 0 ? (data = -data, true) : false;
+
+			constexpr const static char int_to_string_map[] = {
+				'0',
+				'1',
+				'2',
+				'3',
+				'4',
+				'5',
+				'6',
+				'7',
+				'8',
+				'9',
+			};
+
+			{
+				lldiv_t varTmp;
+				varTmp.quot = data;
+				do {
+					varTmp = std::lldiv(varTmp.quot, 10);
+					*varPointer = int_to_string_map[varTmp.rem];
+					--varPointer;
+				} while (varTmp.quot);
+			}
+
+			if (isN) {
+				*varPointer = '-';
+				--varPointer;
+			}
+
+			return { varPointer + 1, static_cast<std::size_t>(varPointer - varPointerEnd) };
 		}
 
 		/*double to string*/
