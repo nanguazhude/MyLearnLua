@@ -9,6 +9,8 @@
 #ifndef lua_h
 #define lua_h
 
+#include "lua_cplusplus_exception/lua_cplusplus_exception.hpp"
+
 #include <cstdarg>
 #include <cstddef>
 

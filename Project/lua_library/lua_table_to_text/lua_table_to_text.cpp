@@ -459,9 +459,11 @@ namespace {
 			}/*while*/
 
 		}
-		catch (...) {/*意外的异常？？？*/
-			$ReturnClearIndex = $ErrorStringIndex;
-			throw;
+		catch (const LuaCplusplusException &e) { 
+			throw e; 
+		}
+		catch (...) {/*意外的异常转化为lua异常*/
+			this->error(u8R"(a unlua exception catched @ lua_table_to_text)"sv);
 		}
 
 		operator lua_State * () const { return $L; }

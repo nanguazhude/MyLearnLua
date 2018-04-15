@@ -57,9 +57,9 @@
 #if defined(__cplusplus) && !defined(LUA_USE_LONGJMP)	/* { */
 
 /* C++ exceptions */
-#define LUAI_THROW(L,c)		throw(c)
+#define LUAI_THROW(L,c)		throw( LuaCplusplusException{}/*changed*/ )
 #define LUAI_TRY(L,c,a) \
-	try { a } catch(...) { if ((c)->status == 0) (c)->status = -1; }
+	try { a } catch(const LuaCplusplusException &) { if ((c)->status == 0) (c)->status = -1; }catch(...){ lua_pushstring(L,"lua catched unlua exception"); if(G(L)->panic){G(L)->panic(L);}std::quick_exit(-99999);  }
 #define luai_jmpbuf		int  /* dummy variable */
 
 #elif defined(LUA_USE_POSIX)				/* }{ */
