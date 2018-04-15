@@ -3,6 +3,7 @@
 #include "../lua.hpp"
 
 #include <list>
+#include <regex>
 #include <array>
 #include <memory>
 #include <string>
@@ -56,7 +57,7 @@ namespace {
 		public:
 			TableItem * const $Parent;
 			int const $IndexInTmpTable;
-			int $LastIndex = 0;
+			int $LastIndex = 1/*用于判断Array是否连续*/;
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
 
@@ -144,17 +145,9 @@ namespace {
 
 		/* int to string */
 		std::string_view int_to_string(lua_Integer data) {
+
+			/*加速运算结果*/
 			switch (data) {
-			case -10: return u8R"(-10)"sv;
-			case -9: return u8R"(-9)"sv;
-			case -8: return u8R"(-8)"sv;
-			case -7: return u8R"(-7)"sv;
-			case -6: return u8R"(-6)"sv;
-			case -5: return u8R"(-5)"sv;
-			case -4: return u8R"(-4)"sv;
-			case -3: return u8R"(-3)"sv;
-			case -2: return u8R"(-2)"sv;
-			case -1: return u8R"(-1)"sv;
 			case 0: return u8R"(0)"sv;
 			case 1: return u8R"(1)"sv;
 			case 2: return u8R"(2)"sv;
@@ -280,16 +273,27 @@ namespace {
 				int n;
 				if (lua_isinteger(*this, $UserKeyIndex)) {
 					auto d = lua_tointegerx(*this, $UserKeyIndex, &n);
+					if (arg->$TableArrayContinue) {
+						if (d == arg->$LastIndex) {
+							++arg->$LastIndex;
+							return/*连续table不输出变量名*/;
+						}
+						else {
+							arg->$TableArrayContinue = false;
+						}
+					}
 					$Writer.write(u8R"([)"sv);
 					return ($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
 				}
 				else {
+					arg->$TableArrayContinue = false;
 					auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
 					$Writer.write(u8R"([)"sv);
 					return ($Writer.write(double_to_string(d)), $Writer.write(u8R"(])"sv), true);
 				}
 			}
 
+			arg->$TableArrayContinue = false;
 			std::size_t n;
 			auto d = lua_tolstring(*this, $UserKeyIndex, &n);
 			if (n > 0) {
@@ -338,6 +342,22 @@ namespace {
 		}
 
 		void print_value_string() {
+
+			constexpr const string_view empty_string = u8R"("")"sv;
+			if (lua_isstring(*this, $UserValueIndex)) {
+				std::size_t n;
+				auto d = lua_tolstring(*this, $UserValueIndex, &n);
+				if (n > 0) {
+					string_view varData{ d ,n };
+					return $Writer.write({ d,n });
+				}
+				else {
+					return $Writer.write(empty_string);
+				}
+			}
+
+			/*write empty sring in any case*/
+			return $Writer.write(empty_string);
 		}
 
 		void print_value_function() {
@@ -459,8 +479,8 @@ namespace {
 			}/*while*/
 
 		}
-		catch (const LuaCplusplusException &e) { 
-			throw e; 
+		catch (const LuaCplusplusException &e) {
+			throw e;
 		}
 		catch (...) {/*意外的异常转化为lua异常*/
 			this->error(u8R"(a unlua exception catched @ lua_table_to_text)"sv);
