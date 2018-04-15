@@ -172,25 +172,23 @@ namespace {
 			auto varPointer = varPointerEnd;
 			const bool isN = data < 0 ? (data = -data, true) : false;
 
-			constexpr const static char int_to_string_map[] = {
-				'0',
-				'1',
-				'2',
-				'3',
-				'4',
-				'5',
-				'6',
-				'7',
-				'8',
-				'9',
-			};
-
 			{
 				lldiv_t varTmp;
 				varTmp.quot = data;
 				do {
 					varTmp = std::lldiv(varTmp.quot, 10);
-					*varPointer = int_to_string_map[varTmp.rem];
+					switch (varTmp.rem) {
+					case 0:*varPointer = '0'; break;
+					case 1:*varPointer = '1'; break;
+					case 2:*varPointer = '2'; break;
+					case 3:*varPointer = '3'; break;
+					case 4:*varPointer = '4'; break;
+					case 5:*varPointer = '5'; break;
+					case 6:*varPointer = '6'; break;
+					case 7:*varPointer = '7'; break;
+					case 8:*varPointer = '8'; break;
+					case 9:*varPointer = '9'; break;
+					}
 					--varPointer;
 				} while (varTmp.quot);
 			}
