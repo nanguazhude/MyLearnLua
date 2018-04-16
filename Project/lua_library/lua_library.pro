@@ -9,6 +9,7 @@ TEMPLATE = lib
 
 include( $$PWD/lua.pri ) 
 include( $$PWD/lua_source.pri ) 
+include( $$PWD/part_goole_v8/double_conversion.pri )
 
 #CONFIG += c++17
 
