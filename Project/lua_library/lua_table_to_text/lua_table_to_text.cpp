@@ -2,7 +2,7 @@
 #define LUA_LIB std::size_t(1)
 #endif
 
-#define QUICK_CHECK_CODE std::size_t(1)
+//#define QUICK_CHECK_CODE std::size_t(1)
 
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
@@ -1246,7 +1246,7 @@ namespace {
 	template<typename LuaLock >
 #endif
 	void CheckCircleTableData<true>::end(LuaLock*L) {
-		 
+
 		for (const auto & varI : $string_about_to_write) {
 			L->$Writer.write(std::get<0>(varI));
 			L->print_equal();
@@ -1271,11 +1271,23 @@ namespace {
 #else
 namespace {
 	namespace easy::writer {
+
+		template<bool V, typename T>
+		class WrapWriter :public T {
+		public:
+			template<typename ... Args>
+			WrapWriter(Args && ... args) : T(std::forward<Args>(args)...) {}
+			constexpr const static bool value = V;
+		};
+
 		static inline void __p_push_string(lua_State *L, const string_view &arg) {
 			lua_pushlstring(L, arg.data(), arg.size());
 		}
-		template<typename Writer, typename ... Args>
+		template<bool V, typename _Writer, typename ... Args>
 		static inline int _p_print_table(lua_State * L, Args && ...args) {
+
+			using Writer = WrapWriter<V, _Writer>;
+
 			const auto varInputTop = lua_gettop(L);
 
 			auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
@@ -1317,7 +1329,8 @@ namespace {
 input table/tablename or table
 no output
 */
-LUA_API int print_table_by_std_cout(lua_State * L) {
+template<bool V>
+static inline int _print_table_by_std_cout(lua_State * L) {
 	class Writer {
 	public:
 		inline void write(const string_view &arg) {
@@ -1331,7 +1344,8 @@ LUA_API int print_table_by_std_cout(lua_State * L) {
  input table/tablename filename or table filename
  no output
  */
-LUA_API int print_table_by_std_ofstream(lua_State *L) {
+template<bool V>
+static inline int _print_table_by_std_ofstream(lua_State *L) {
 
 	class Writer {
 		unique_ptr<std::ofstream> outer;
@@ -1353,13 +1367,27 @@ LUA_API int print_table_by_std_ofstream(lua_State *L) {
 	if (n > 0) {
 		const string varTmpData{ data,n };
 		lua_pop(L, 1);
-		return easy::writer::_p_print_table<Writer>(L, L, varTmpData);
+		return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
 	}
 	else {
 		easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
 		lua_error(L);
-}
+	}
 	return 0;
+}
+
+LUA_API int print_table_by_std_ofstream(lua_State *L) {
+	return _print_table_by_std_ofstream<false>(L);
+}
+LUA_API int print_table_by_std_cout(lua_State *L) {
+	return _print_table_by_std_cout<false>(L);
+}
+
+LUA_API int full_print_table_by_std_ofstream(lua_State *L) {
+	return _print_table_by_std_ofstream<true>(L);
+}
+LUA_API int full_print_table_by_std_cout(lua_State *L) {
+	return _print_table_by_std_cout<true>(L);
 }
 
 #endif
