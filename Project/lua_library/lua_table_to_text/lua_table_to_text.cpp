@@ -202,7 +202,7 @@ namespace {
 			double_conversion::StringBuilder varSB{ $TmpStringBuffer.data(),static_cast<int>($TmpStringBuffer.size()) };
 			varCV.ToShortest(data, &varSB);
 			auto ansData = varSB.Finalize();
-			return { ansData,varSB.position() };
+			return { ansData,static_cast<std::size_t>(varSB.position()) };
 		}
 
 		/* 将字符串加载到Lua栈 */
