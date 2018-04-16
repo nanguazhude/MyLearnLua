@@ -950,8 +950,12 @@ namespace {
 		LuaLock&operator=(LuaLock &&) = delete;
 	};
 
-	static inline void lua_table_to_text(lua_State * argL) {
+#if defined(QUICK_CHECK_CODE)
+	static inline void lua_table_to_text(lua_State * argL,const string_view & argTableName) {
+		LuaLock test{ argL,WType{} };
+		test.print_table(argTableName);
 	}
+#endif
 
 }/*namespace*/
 
