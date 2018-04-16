@@ -25,8 +25,13 @@ using namespace std::string_view_literals;
 namespace {
 
 	using string_view = std::string_view;
+	/**************************************************************/
+	/* change here to change how to use memory */
 	using string = std::string;// std::pmr::string;
 	template<typename T> using list = std::list<T>;// std::pmr::list;
+	template<typename T> using unique_ptr = std::unique_ptr<T>;
+	using std::make_unique;
+	/**************************************************************/
 
 	/* Lua栈区最小值 */
 	constexpr int inline concept_stack_min_size() { return 16; }
@@ -976,7 +981,7 @@ namespace {
 		static inline int _p_print_table(lua_State * L, Args && ...args) {
 			const auto varInputTop = lua_gettop(L);
 
-			auto var = std::make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
+			auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
 			if (lua_istable(L, varInputTop)) {
 				var->print_table({});
 			}
@@ -1032,13 +1037,13 @@ LUA_API int print_table_by_std_cout(lua_State * L) {
 LUA_API int print_table_by_std_ofstream(lua_State *L) {
 
 	class Writer {
-		std::unique_ptr<std::ofstream> outer;
+		unique_ptr<std::ofstream> outer;
 	public:
 		inline void write(const std::string_view &arg) {
 			(*outer) << arg;
 		}
 		Writer(lua_State *L, const std::string_view &arg) {
-			outer = std::make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
+			outer = make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
 			if (outer->is_open() == false) {
 				easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
 				lua_error(L);
@@ -1049,7 +1054,7 @@ LUA_API int print_table_by_std_ofstream(lua_State *L) {
 	std::size_t n = 0;
 	const auto data = lua_tolstring(L, -1, &n);
 	if (n > 0) {
-		string varTmpData{ data,n };
+		const string varTmpData{ data,n };
 		lua_pop(L, 1);
 		return easy::writer::_p_print_table<Writer>(L, L, varTmpData);
 	}
