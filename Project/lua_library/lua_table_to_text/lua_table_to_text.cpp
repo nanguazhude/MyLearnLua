@@ -31,7 +31,7 @@ namespace {
 	constexpr int inline concept_min_tmp_table_size() { return 128; }
 	/* 临时缓存区大小 */
 	constexpr int inline concept_tmp_buffer_size() { return 256; }
-	/* 连续=的最大优化值 */
+	/* 连续'='的最大优化值 */
 	constexpr int inline max_equal_size() { return 256; }
 #if defined(QUICK_CHECK_CODE)
 	class WType {
@@ -61,7 +61,7 @@ namespace {
 			int $LastIndex = 1/*用于判断Array是否连续*/;
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
-
+			bool $IsRootTableNameNull = false;
 			TableItem(TableItem * P, const int & arg) :$Parent(P), $IndexInTmpTable(arg) {}
 
 			inline void destory(const LuaLock & arg) {
@@ -266,46 +266,115 @@ namespace {
 			lua_pushvalue($L, $TableIndex);
 			push_string(argTableName);
 			lua_pushvalue($L, $TableIndex);
-			$ItemTables.emplace_back(nullptr, ++$CurrentTableIndex).push<true>(*this);
+			auto & varI = $ItemTables.emplace_back(nullptr, ++$CurrentTableIndex);
+			varI.push<true>(*this);
+			varI.$IsRootTableNameNull = argTableName.empty();
 		}
 
-		/*just print value name*/
+		enum class PrintNameType : int {
+			TableName,
+			ValueName
+		};
+
+		template<PrintNameType NType = PrintNameType::ValueName>
 		bool print_name(TableItem*arg) {
 
-			const auto varType = lua_type(*this, $UserKeyIndex);
+			if constexpr(NType == PrintNameType::ValueName) {/*just print value name*/
+				const auto varType = lua_type(*this, $UserKeyIndex);
 
-			if (LUA_TNUMBER == varType) {
-				int n;
-				if (lua_isinteger(*this, $UserKeyIndex)) {
-					auto d = lua_tointegerx(*this, $UserKeyIndex, &n);
-					if (arg->$TableArrayContinue) {
-						if (d == arg->$LastIndex) {
-							++arg->$LastIndex;
-							return/*连续table不输出变量名*/true;
+				if (LUA_TNUMBER == varType) {
+					int n;
+					if (lua_isinteger(*this, $UserKeyIndex)) {
+						auto d = lua_tointegerx(*this, $UserKeyIndex, &n);
+						if (arg->$TableArrayContinue) {
+							if (d == arg->$LastIndex) {
+								++(arg->$LastIndex);
+								return/*连续table不输出变量名*/true;
+							}
+							else {
+								arg->$TableArrayContinue = false;
+							}
 						}
-						else {
-							arg->$TableArrayContinue = false;
-						}
+						$Writer.write(u8R"([)"sv);
+						return ($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
 					}
-					$Writer.write(u8R"([)"sv);
-					return ($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
+					else {
+						arg->$TableArrayContinue = false;
+						auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
+						$Writer.write(u8R"([)"sv);
+						return ($Writer.write(double_to_string(d)), $Writer.write(u8R"(])"sv), true);
+					}
+				}
+
+				arg->$TableArrayContinue = false;
+				std::size_t n;
+				auto d = lua_tolstring(*this, $UserKeyIndex, &n);
+				if (n > 0) {
+					return ($Writer.write({ d,n }), true);
 				}
 				else {
-					arg->$TableArrayContinue = false;
-					auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
-					$Writer.write(u8R"([)"sv);
-					return ($Writer.write(double_to_string(d)), $Writer.write(u8R"(])"sv), true);
+					return false;
 				}
-			}
 
-			arg->$TableArrayContinue = false;
-			std::size_t n;
-			auto d = lua_tolstring(*this, $UserKeyIndex, &n);
-			if (n > 0) {
-				return ($Writer.write({ d,n }), true);
 			}
-			else {
-				return false;
+			else {/*just print table name*/
+				const auto RPos /*return position*/ = lua_gettop(*this);
+#undef ReturnInThisFunction
+#define ReturnInThisFunction /*space*/lua_settop(*this,RPos);return/*space*/
+
+				lua_rawgeti(*this, this->$TmpTableIndex, arg->$IndexInTmpTable);
+				lua_rawgeti(*this, -1, 3);
+				const auto varTableNamePos /*table name position*/ = lua_gettop(*this);
+				const auto varType = lua_type(*this, varTableNamePos);
+
+				if (LUA_TNIL == varType) {
+					ReturnInThisFunction true;
+				}
+
+				if (LUA_TNUMBER == varType) {
+					int n;
+					if (lua_isinteger(*this, varTableNamePos)) {
+						auto d = lua_tointegerx(*this, varTableNamePos, &n);
+						if (arg->$Parent == nullptr) {
+							this->error(u8R"(Root Table Can Not Use Number To Key)"sv);
+						}
+						if (arg->$Parent->$TableArrayContinue) {
+							if (d == arg->$Parent->$LastIndex) {
+								++(arg->$Parent->$LastIndex);
+								return/*连续table不输出变量名*/true;
+							}
+							else {
+								arg->$Parent->$TableArrayContinue = false;
+							}
+						}
+						$Writer.write(u8R"([)"sv);
+						ReturnInThisFunction($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
+					}
+					else {
+						if (arg->$Parent) {
+							arg->$Parent->$TableArrayContinue = false;
+						}
+						auto d = lua_tonumberx(*this, varTableNamePos, &n);
+						$Writer.write(u8R"([)"sv);
+						return ($Writer.write(double_to_string(d)), $Writer.write(u8R"(])"sv), true);
+					}
+				}
+
+				if (arg->$Parent) {
+					arg->$Parent->$TableArrayContinue = false;
+				}
+
+				std::size_t n;
+				auto d = lua_tolstring(*this, varTableNamePos, &n);
+				if (n > 0) {
+					ReturnInThisFunction($Writer.write({ d,n }), true);
+				}
+				else {
+					ReturnInThisFunction false;
+				}
+
+				/**/ReturnInThisFunction false;
+#undef ReturnInThisFunction
 			}
 
 		}
@@ -652,7 +721,7 @@ namespace {
 		bool static inline is_simple_string(const string_view & arg) {
 			/* a-z A-Z 0-9 _ */
 			for (const auto & varI : arg) {
-				if (varI&0b010000000) {/*最高位是1肯定不符合要求...*/
+				if (varI & 0b010000000) {/*最高位是1肯定不符合要求...*/
 					return false;
 				}
 				if (((varI <= 'z') && (varI >= 'a')) ||
@@ -757,12 +826,34 @@ namespace {
 		void print_table(const string_view & argTableName) try {
 			this->clear(argTableName);
 
+			auto pop_a_table = [this]() {
+				--$CurrentTableIndex;
+				$ItemTables.rbegin()->destory(*this);
+				$ItemTables.pop_back();
+			};
 		next_table:
 			while (false == $ItemTables.empty()) {
 				auto & varCurrent = *$ItemTables.rbegin();
 
 				/*begin of a table*/
 				if (varCurrent.$IsCreate) {
+
+					varCurrent.$IsCreate = false;
+					const bool & varIsRootNullName = varCurrent.$IsRootTableNameNull;
+
+					if (false == varIsRootNullName) {
+						if (false == print_name<PrintNameType::TableName>(&varCurrent)) {
+							/* ??? */
+							pop_a_table();
+							continue;
+						}
+						if (varCurrent.$Parent) {
+							if (false == varCurrent.$Parent->$TableArrayContinue) {
+								this->print_equal();
+							}
+						}
+					}
+
 					print_table_begin();
 				}
 
@@ -773,7 +864,7 @@ namespace {
 					case  LUA_TNONE: {/*跳过none*/ break; }break;
 					case  LUA_TNIL: { /*跳过nil*/break; } break;
 					case  LUA_TBOOLEAN: {
-						if (false == this->print_name(&varCurrent))break;
+						if (false == this->print_name(&varCurrent)) break;
 						if (false == varCurrent.$TableArrayContinue) this->print_equal();
 						this->print_value_bool();
 						this->print_endl();
@@ -836,9 +927,7 @@ namespace {
 
 				{/*End of a table*/
 					print_table_end();
-					--$CurrentTableIndex;
-					$ItemTables.rbegin()->destory(*this);
-					$ItemTables.pop_back();
+					pop_a_table();
 				}
 
 			}/*while*/
