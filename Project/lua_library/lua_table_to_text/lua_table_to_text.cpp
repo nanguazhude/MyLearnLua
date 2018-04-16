@@ -652,6 +652,9 @@ namespace {
 		bool static inline is_simple_string(const string_view & arg) {
 			/* a-z A-Z 0-9 _ */
 			for (const auto & varI : arg) {
+				if (varI&0b010000000) {/*最高位是1肯定不符合要求...*/
+					return false;
+				}
 				if (((varI <= 'z') && (varI >= 'a')) ||
 					((varI <= 'Z') && (varI >= 'A')) ||
 					((varI <= '9') && (varI >= '0')) ||
