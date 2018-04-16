@@ -1337,7 +1337,7 @@ static inline int _print_table_by_std_cout(lua_State * L) {
 			std::cout << arg;
 		}
 	};
-	return easy::writer::_p_print_table<Writer>(L);
+	return easy::writer::_p_print_table<V, Writer>(L);
 }/*print_table_by_std_cout*/
 
  /*
