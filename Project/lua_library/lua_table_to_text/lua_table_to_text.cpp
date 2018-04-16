@@ -57,9 +57,9 @@ namespace {
 	class CheckCircleTableData<true> {
 	public:
 		const constexpr static bool value = true;
-		list<string> $catch_print_able_name/*缓冲所有名字*/;
+		list<const string> $catch_print_able_name/*缓冲所有名字*/;
 		set<const void *> $about_circle_tables;
-		list<std::pair<string_view, string_view>/**/> $string_about_to_write;
+		list<std::pair<const string_view, const string_view>/**/> $string_about_to_write;
 		class TableDetail {
 		public:
 			TableDetail * $Parent;
