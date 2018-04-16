@@ -1,7 +1,7 @@
 ﻿#define QUICK_CHECK_CODE
 
 #include "../lua.hpp"
-#include "../part_goole_v8/include/double-conversion/double-conversion.h"
+#include "../part_google_v8/include/double-conversion/double-conversion.h"
 
 #include <list>
 #include <array>
