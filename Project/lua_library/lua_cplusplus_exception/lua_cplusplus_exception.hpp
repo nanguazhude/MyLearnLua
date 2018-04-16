@@ -1,12 +1,13 @@
 ﻿//#pragma once
-#ifndef _LUA_CPLUSPLUS_EXCEPTION
-#define _LUA_CPLUSPLUS_EXCEPTION
+#ifndef _LUA_CPLUSPLUS_EXCEPTIONa
+#define _LUA_CPLUSPLUS_EXCEPTIONa
 
+#include "../luaconf.hpp"
 #include <exception>
 
 class LuaCplusplusException {
 public:
-	virtual ~LuaCplusplusException() =default ;
+	LUA_API virtual ~LuaCplusplusException() ;
 };
 
 #endif

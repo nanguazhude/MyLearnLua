@@ -6,8 +6,8 @@
 */
 
 
-#ifndef lua_h
-#define lua_h
+#ifndef lua_hxx
+#define lua_hxx
 
 #include "lua_cplusplus_exception/lua_cplusplus_exception.hpp"
 
