@@ -4,7 +4,6 @@
 #include "../part_goole_v8/include/double-conversion/double-conversion.h"
 
 #include <list>
-#include <regex>
 #include <array>
 #include <memory>
 #include <string>
@@ -652,8 +651,19 @@ namespace {
 
 		bool static inline is_simple_string(const string_view & arg) {
 			/* a-z A-Z 0-9 _ */
-			const static std::regex varR(u8R"!([a-zA-Z0-9_]*)!");
-			return std::regex_match(arg.begin(), arg.end(), varR);
+			for (const auto & varI : arg) {
+				if (((varI <= 'z') && (varI >= 'a')) ||
+					((varI <= 'Z') && (varI >= 'A')) ||
+					((varI <= '9') && (varI >= '0')) ||
+					(varI == '_')
+					) {
+					continue;
+				}
+				else {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		void _p_print_value_string(const string_view varData) {
