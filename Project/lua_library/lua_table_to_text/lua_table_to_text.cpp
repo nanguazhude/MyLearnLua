@@ -7,12 +7,15 @@
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
 
+#include <set>
+#include <map>
 #include <list>
 #include <array>
 #include <memory>
 #include <string>
 #include <cstddef>
 #include <utility>
+#include <optional>
 #include <string_view>
 #include <type_traits>
 #include <memory_resource>
@@ -30,6 +33,8 @@ namespace {
 	using string = std::string;// std::pmr::string;
 	template<typename T> using list = std::list<T>;// std::pmr::list;
 	template<typename T> using unique_ptr = std::unique_ptr<T>;
+	template<typename T> using set = std::set<T>;
+	template<typename T, typename U> using map = std::map<T, U>;
 	using std::make_unique;
 	/**************************************************************/
 
@@ -41,6 +46,41 @@ namespace {
 	constexpr int inline concept_tmp_buffer_size() { return 256; }
 	/* 连续'='的最大优化值 */
 	constexpr int inline max_equal_size() { return 256; }
+
+	template<bool> class CheckCircleTableData;
+
+	template<>
+	class CheckCircleTableData<true> {
+	public:
+		const constexpr static bool value = true;
+		class TableDetail {
+		public:
+
+		};
+		map<const void *, TableDetail> $Tables;
+		inline bool hasTable(const void * const arg) const { return $Tables.count(arg) > 0; }
+		inline auto find(const void * const arg) const {
+			auto varPos = $Tables.find(arg);
+			return std::make_pair(varPos, !(varPos == $Tables.end()));
+		}
+		template<typename TableItem>
+		inline void insert(TableItem *);
+	};
+
+	template<>
+	class CheckCircleTableData<false> {
+	public:
+		const constexpr static bool value = false;
+		set<const void *> $Tables;
+		inline bool hasTable(const void * const arg) const { return $Tables.count(arg) > 0; }
+		inline auto find(const void * const arg) const {
+			auto varPos = $Tables.find(arg);
+			return std::make_pair(varPos, !(varPos == $Tables.end()));
+		}
+		template<typename TableItem>
+		inline void insert(TableItem *);
+	};
+
 #if defined(QUICK_CHECK_CODE)
 	class WType {
 	public:
@@ -733,10 +773,11 @@ namespace {
 				if (varI & 0b010000000) {/*最高位是1肯定不符合要求...*/
 					return false;
 				}
-				if (((varI <= 'z') && (varI >= 'a')) ||
+				if ((varI == '_') ||
+					((varI <= 'z') && (varI >= 'a')) ||
 					((varI <= 'Z') && (varI >= 'A')) ||
 					((varI <= '9') && (varI >= '0')) ||
-					(varI == '_')
+					false
 					) {
 					continue;
 				}
@@ -958,6 +999,16 @@ namespace {
 		LuaLock&operator=(const LuaLock &) = delete;
 		LuaLock&operator=(LuaLock &&) = delete;
 	};
+
+	template<typename TableItem>
+	void CheckCircleTableData<false>::insert(TableItem *arg) {
+		//$Tables.insert(  );
+	}
+
+	template<typename TableItem>
+	void CheckCircleTableData<true>::insert(TableItem *arg) {
+
+	}
 
 #if defined(QUICK_CHECK_CODE)
 	static inline void lua_table_to_text(lua_State * argL, const string_view & argTableName) {
