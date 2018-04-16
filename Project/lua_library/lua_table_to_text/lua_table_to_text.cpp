@@ -2,7 +2,7 @@
 #define LUA_LIB std::size_t(1)
 #endif
 
-//#define QUICK_CHECK_CODE std::size_t(1)
+#define QUICK_CHECK_CODE std::size_t(1)
 
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
@@ -33,8 +33,8 @@ namespace {
 	using string = std::string;// std::pmr::string;
 	template<typename T> using list = std::list<T>;// std::pmr::list;
 	template<typename T> using unique_ptr = std::unique_ptr<T>;
-	template<typename T> using set = std::set<T>;
-	template<typename T, typename U> using map = std::map<T, U>;
+	template<typename T, typename C = std::less<void> > using set = std::set<T, C>;
+	template<typename T, typename U, typename C = std::less<void> > using map = std::map<T, U, C>;
 	using std::make_unique;
 	/**************************************************************/
 
@@ -48,14 +48,22 @@ namespace {
 	constexpr int inline max_equal_size() { return 256; }
 
 	template<bool> class CheckCircleTableData;
+#if defined(QUICK_CHECK_CODE)
+	class LuaLock;
+#else
 
+#endif
 	template<>
 	class CheckCircleTableData<true> {
 	public:
 		const constexpr static bool value = true;
+		list<string> $catch_print_able_name/*缓冲所有名字*/;
+		set<const void *> $about_circle_tables;
+		list<std::pair<string_view, string_view>/**/> $string_about_to_write;
 		class TableDetail {
 		public:
-
+			TableDetail * $Parent;
+			string_view print_able_name;
 		};
 		map<const void *, TableDetail> $Tables;
 		inline bool hasTable(const void * const arg) const { return $Tables.count(arg) > 0; }
@@ -63,8 +71,25 @@ namespace {
 			auto varPos = $Tables.find(arg);
 			return std::make_pair(varPos, !(varPos == $Tables.end()));
 		}
+		inline void parent_clear() {
+			$catch_print_able_name.clear();
+			$Tables.clear();
+			$about_circle_tables.clear();
+		}
+#if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
-		inline void insert(TableItem *);
+		inline void insert(LuaLock*, TableItem *);
+		void begin(LuaLock*);
+		void end(LuaLock*);
+#else
+		template<typename LuaLock, typename TableItem>
+		inline void insert(LuaLock*, TableItem *);
+		template<typename LuaLock>
+		void begin(LuaLock*);
+		template<typename LuaLock>
+		void end(LuaLock*);
+#endif
+
 	};
 
 	template<>
@@ -77,19 +102,33 @@ namespace {
 			auto varPos = $Tables.find(arg);
 			return std::make_pair(varPos, !(varPos == $Tables.end()));
 		}
+		inline void parent_clear() { $Tables.clear(); }
+#if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
-		inline void insert(TableItem *);
+		inline void insert(LuaLock*, TableItem *);
+		void begin(LuaLock*) {}
+		void end(LuaLock*) {}
+#else
+		template<typename LuaLock, typename TableItem>
+		inline void insert(LuaLock*, TableItem *);
+		template<typename LuaLock>
+		void begin(LuaLock*) {/*just do nothing*/ }
+		template<typename LuaLock>
+		void end(LuaLock*) {/*just do nothing*/ }
+#endif
+
 	};
 
 #if defined(QUICK_CHECK_CODE)
 	class WType {
 	public:
 		void inline write(const string_view &a) { std::cout << a; }
+		const constexpr static bool value = false;
 	};
 #else
 	template<typename WType/* WType w; w.write(const string_view &); */>
 #endif
-	class LuaLock {
+	class LuaLock :public CheckCircleTableData<WType::value> {
 		/*prvate:memory:new&delete*/
 	public:
 		lua_State * $L;
@@ -103,11 +142,12 @@ namespace {
 		int $CurrentTableIndex = 1;
 		std::remove_cv_t<std::remove_reference_t<WType>/**/> $Writer;
 		std::array<char, concept_tmp_buffer_size() > $TmpStringBuffer;
+
 		class TableItem {
 		public:
 			TableItem * const $Parent;
 			int const $IndexInTmpTable;
-			int $LastIndex = 1/*用于判断Array是否连续*/;
+			int  $LastIndex = 1/*用于判断Array是否连续*/;
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
 			bool $IsRootTableNameNull = false;
@@ -261,7 +301,13 @@ namespace {
 		template<typename U>
 		inline LuaLock(lua_State * arg, U&&w) :$L(arg), $Writer(std::forward<U>(w)) {
 			/* 保证最小栈区 */
-			lua_checkstack($L, concept_stack_min_size());
+			if constexpr(this->value) {
+				lua_checkstack($L, concept_stack_min_size() + 8);
+			}
+			else {
+				lua_checkstack($L, concept_stack_min_size());
+			}
+
 			$TableIndex = lua_gettop($L);
 			$ReturnClearIndex = $TableIndex;
 			if (lua_istable($L, $TableIndex)) {
@@ -302,6 +348,7 @@ namespace {
 		}
 
 		void clear(const string_view & argTableName) {
+			parent_clear();
 			$CurrentTableIndex = 0;
 			lua_settop(*this, $TableIndex);
 			lua_settop(*this, $UserKeyIndex);
@@ -881,6 +928,9 @@ namespace {
 				$ItemTables.rbegin()->destory(*this);
 				$ItemTables.pop_back();
 			};
+
+			this->begin(this);
+
 		next_table:
 			while (false == $ItemTables.empty()) {
 				auto & varCurrent = *$ItemTables.rbegin();
@@ -982,6 +1032,8 @@ namespace {
 
 			}/*while*/
 
+			this->end(this);
+
 		}
 		catch (const LuaCplusplusException &e) {
 			throw e;
@@ -1000,13 +1052,207 @@ namespace {
 		LuaLock&operator=(LuaLock &&) = delete;
 	};
 
+#if defined(QUICK_CHECK_CODE)
 	template<typename TableItem>
-	void CheckCircleTableData<false>::insert(TableItem *arg) {
+#else
+	template<typename LuaLock, typename TableItem>
+#endif
+	void CheckCircleTableData<false>::insert(LuaLock*, TableItem *arg) {
 		//$Tables.insert(  );
 	}
 
+#if defined(QUICK_CHECK_CODE)
 	template<typename TableItem>
-	void CheckCircleTableData<true>::insert(TableItem *arg) {
+#else
+	template<typename LuaLock, typename TableItem>
+#endif
+	void CheckCircleTableData<true>::insert(LuaLock*, TableItem *arg) {
+
+	}
+
+#if defined(QUICK_CHECK_CODE)
+#else
+	template<typename LuaLock >
+#endif
+	void CheckCircleTableData<true>::begin(LuaLock*L) {
+		/*遍历整个表，记录下要索引表的名称*/
+		const auto RPos = lua_gettop(*L);
+#undef ReturnInThisFunction
+#define ReturnInThisFunction /*space*/lua_settop(*L,RPos);return/*space*/
+
+		/*构建索引表*/
+		class Item {
+		public:
+			const Item * const parent;
+			const void * const data;
+
+			class Compare {
+			public:
+				typedef int is_transparent;
+
+				bool operator()(const Item & l, const Item &r) const { return l.data < r.data; }
+				bool operator()(const void * l, const Item &r) const { return l < r.data; }
+				bool operator()(const Item & l, const void * r) const { return l.data < r; }
+			};
+
+			Item(const Item * p, const void *d) :parent(p), data(d) {}
+
+		};
+
+		class Pack {
+		public:
+			lua_State * L;
+			int $TmpTableIndex;
+			int $UserKeyIndex;
+			int $UserTableIndex;
+			operator lua_State *() const { return L; }
+			Pack(lua_State *a) :L(a) {}
+		};
+
+		class StackItem {
+		public:
+			int $IndexInTmpTable;
+			const Item * const $TablePoiner;
+			StackItem(const Item * p, int k) : $IndexInTmpTable(k), $TablePoiner(p) {}
+
+			inline void destory(const Pack & arg) {
+				lua_pushnil(arg);
+				lua_rawseti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+			}
+
+			inline void push(const Pack & arg) {
+				//$IsCreate = false;
+				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+				const auto varThisTableIndex = lua_gettop(arg);
+				/*
+				table key
+				table
+				*/
+				{
+					/* item.key */
+					lua_pushvalue(arg, varThisTableIndex - 1);
+					lua_rawseti(arg, varThisTableIndex, 1);
+				}
+			}
+
+			inline void push_create(const Pack & arg) {
+
+				/*创建索引表*/
+				lua_createtable(arg, 2, 0);
+				const auto varThisTableIndex = lua_gettop(arg);
+				{
+					/* value */
+					lua_pushvalue(arg, varThisTableIndex);
+					/* set tmp[IndexInTmpTable] = value */
+					lua_rawseti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+				}
+				/*
+				index table
+				this table
+				parent table key
+				parent table
+				*/
+				{
+					/* item.key */
+					lua_pushnil(arg);
+					lua_rawseti(arg, varThisTableIndex, 1);
+				}
+
+				{
+					/* item.table */
+					lua_pushvalue(arg, varThisTableIndex - 1);
+					lua_rawseti(arg, varThisTableIndex, 2);
+				}
+
+				/*移除不用的值*/
+				lua_settop(arg, arg.$UserKeyIndex);
+
+			}
+
+			inline void pop(const Pack & arg) {
+				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
+				const auto varThisTableIndex = lua_gettop(arg);
+				/*key*/
+				lua_rawgeti(arg, varThisTableIndex, 1);
+				lua_copy(arg, -1, arg.$UserKeyIndex);
+				/*table*/
+				lua_rawgeti(arg, varThisTableIndex, 2);
+				lua_copy(arg, -1, arg.$UserTableIndex);
+				/*移除不用的值*/
+				lua_settop(arg, arg.$UserKeyIndex);
+			}
+
+		};
+
+		Pack varPack{ *L };
+
+		lua_pushvalue(*L, L->$TmpTableIndex);
+		varPack.$TmpTableIndex = lua_gettop(*L);
+
+		lua_pushvalue(*L, L->$TableIndex);
+		varPack.$UserTableIndex = lua_gettop(*L);
+
+		lua_pushnil(*L);
+		varPack.$UserKeyIndex = varPack.$UserTableIndex + 1;
+		const auto varValueIndex = varPack.$UserTableIndex + 2;
+
+		set<Item, Item::Compare> varAllTables;
+		list<StackItem> varStack;
+
+		lua_pushvalue(*L, L->$TableIndex);
+		lua_pushvalue(*L, L->$TableIndex);
+
+		int varCurrentIndex = 1;
+		{
+			auto varTP = lua_topointer(*L, -1);
+			varStack.emplace_back(&(*varAllTables.emplace(nullptr, varTP).first), varCurrentIndex).push_create(varPack);
+		}
+
+	next_table:
+		while (false == varAllTables.empty()) {
+			auto & varI = *varStack.rbegin();
+			varI.pop(varPack);
+
+			while (lua_next(varPack, varPack.$UserTableIndex)) {
+				const auto varType = lua_type(varPack, varValueIndex);
+				if (varType == LUA_TTABLE) {
+					const void * varTableIndexPointer = lua_topointer(*L, -1);
+					auto varData = varAllTables.find(varTableIndexPointer);
+					if (varData != varAllTables.end()) {
+						$about_circle_tables.insert(varTableIndexPointer);
+						continue;
+					}
+					else {
+						++varCurrentIndex;
+						varStack.emplace_back(&(*varAllTables.emplace(varI.$TablePoiner, varTableIndexPointer).first),
+							varCurrentIndex).push_create(varPack);
+						varI.push(varPack);
+						goto next_table;
+					}
+				}
+				lua_settop(varPack, varPack.$UserKeyIndex);
+			}
+
+			--varCurrentIndex;
+			varI.destory(varPack);
+			varStack.pop_back();
+		}
+
+		ReturnInThisFunction;
+	}
+
+#if defined(QUICK_CHECK_CODE)
+#else
+	template<typename LuaLock >
+#endif
+	void CheckCircleTableData<true>::end(LuaLock*L) {
+		 
+		for (const auto & varI : $string_about_to_write) {
+			L->$Writer.write(std::get<0>(varI));
+			L->print_equal();
+			L->$Writer.write(std::get<1>(varI));
+			L->print_endl();
+		}
 
 	}
 
@@ -1112,7 +1358,7 @@ LUA_API int print_table_by_std_ofstream(lua_State *L) {
 	else {
 		easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
 		lua_error(L);
-	}
+}
 	return 0;
 }
 
