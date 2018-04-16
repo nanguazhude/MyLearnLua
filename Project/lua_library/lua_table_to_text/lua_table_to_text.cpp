@@ -1,4 +1,8 @@
-﻿#define QUICK_CHECK_CODE
+﻿#ifndef LUA_LIB
+#define LUA_LIB std::size_t(1)
+#endif
+
+//#define QUICK_CHECK_CODE std::size_t(1)
 
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
@@ -12,10 +16,9 @@
 #include <string_view>
 #include <type_traits>
 #include <memory_resource>
-
-#if defined(QUICK_CHECK_CODE)
+/***************************/
+#include <fstream>
 #include <iostream>
-#endif
 
 using namespace std::string_view_literals;
 
@@ -42,6 +45,7 @@ namespace {
 	template<typename WType/* WType w; w.write(const string_view &); */>
 #endif
 	class LuaLock {
+		/*prvate:memory:new&delete*/
 	public:
 		lua_State * $L;
 		int $TableIndex;
@@ -951,7 +955,7 @@ namespace {
 	};
 
 #if defined(QUICK_CHECK_CODE)
-	static inline void lua_table_to_text(lua_State * argL,const string_view & argTableName) {
+	static inline void lua_table_to_text(lua_State * argL, const string_view & argTableName) {
 		LuaLock test{ argL,WType{} };
 		test.print_table(argTableName);
 	}
@@ -960,5 +964,101 @@ namespace {
 }/*namespace*/
 
 
+#if defined(QUICK_CHECK_CODE)
 
+#else
+namespace {
+	namespace easy::writer {
+		static inline void __p_push_string(lua_State *L, const string_view &arg) {
+			lua_pushlstring(L, arg.data(), arg.size());
+		}
+		template<typename Writer, typename ... Args>
+		static inline int _p_print_table(lua_State * L, Args && ...args) {
+			const auto varInputTop = lua_gettop(L);
+
+			auto var = std::make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
+			if (lua_istable(L, varInputTop)) {
+				var->print_table({});
+			}
+			else {
+				if (varInputTop > 1) {
+					{
+						const auto varTableIndex = varInputTop - 1;
+						if (lua_istable(L, varTableIndex)) {
+							lua_pushvalue(L, varTableIndex);
+						}
+						else {
+							__p_push_string(L, u8R"(can not find a table)"sv);
+							lua_error(L);
+						}
+					}
+					std::size_t n = 0;
+					const auto varAns = lua_tolstring(L, varInputTop, &n);
+					if (n > 0) {
+						var->print_table({ varAns,n });
+					}
+					else {
+						var->error(u8R"(can not find table name)"sv);
+					}
+				}
+				else {
+					__p_push_string(L, u8R"(can not find a table)"sv);
+					lua_error(L);
+				}
+			}
+			return 0;
+		}/***/
+	}
+}/*::easy::writer*/
+
+/*
+input table/tablename or table
+no output
+*/
+LUA_API int print_table_by_std_cout(lua_State * L) {
+	class Writer {
+	public:
+		inline void write(const string_view &arg) {
+			std::cout << arg;
+		}
+	};
+	return easy::writer::_p_print_table<Writer>(L);
+}/*print_table_by_std_cout*/
+
+ /*
+ input table/tablename filename or table filename
+ no output
+ */
+LUA_API int print_table_by_std_ofstream(lua_State *L) {
+
+	class Writer {
+		std::unique_ptr<std::ofstream> outer;
+	public:
+		inline void write(const std::string_view &arg) {
+			(*outer) << arg;
+		}
+		Writer(lua_State *L, const std::string_view &arg) {
+			outer = std::make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
+			if (outer->is_open() == false) {
+				easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
+				lua_error(L);
+			}
+		}
+	};
+
+	std::size_t n = 0;
+	const auto data = lua_tolstring(L, -1, &n);
+	if (n > 0) {
+		string varTmpData{ data,n };
+		lua_pop(L, 1);
+		return easy::writer::_p_print_table<Writer>(L, L, varTmpData);
+	}
+	else {
+		easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
+		lua_error(L);
+	}
+	return 0;
+}
+
+#endif
 
