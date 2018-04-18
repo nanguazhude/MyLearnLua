@@ -31,7 +31,7 @@
 #endif
 
 #if !defined(LUA_MAXINPUT)
-#define LUA_MAXINPUT		512
+#define LUA_MAXINPUT		(1024*1024)
 #endif
 
 #if !defined(LUA_INIT_VAR)
@@ -305,21 +305,25 @@ static int incomplete (lua_State *L, int status) {
 ** Prompt the user, read a line, and push it into the Lua stack.
 */
 static int pushline (lua_State *L, int firstline) {
-  char buffer[LUA_MAXINPUT];
+  thread_local char buffer[LUA_MAXINPUT];
   char *b = buffer;
   size_t l;
   const char *prmt = get_prompt(L, firstline);
   int readstatus = lua_readline(L, b, prmt);
-  if (readstatus == 0)
-    return 0;  /* no input (prompt will be popped by caller) */
+  if (readstatus == 0) {
+	  return 0;  /* no input (prompt will be popped by caller) */
+  }
   lua_pop(L, 1);  /* remove prompt */
   l = strlen(b);
-  if (l > 0 && b[l-1] == '\n')  /* line ends with newline? */
-    b[--l] = '\0';  /* remove it */
-  if (firstline && b[0] == '=')  /* for compatibility with 5.2, ... */
-    lua_pushfstring(L, "return %s", b + 1);  /* change '=' to 'return' */
-  else
-    lua_pushlstring(L, b, l);
+  if (l > 0 && b[l - 1] == '\n') {/* line ends with newline? */
+	  b[--l] = '\0';  /* remove it */
+  }
+  if (firstline && b[0] == '=') {/* for compatibility with 5.2, ... */
+	  lua_pushfstring(L, "return %s", b + 1);  /* change '=' to 'return' */
+  }
+  else {
+	  lua_pushlstring(L, b, l);
+  }
   lua_freeline(L, b);
   return 1;
 }
@@ -335,8 +339,9 @@ static int addreturn (lua_State *L) {
   int status = luaL_loadbuffer(L, retline, strlen(retline), "=stdin");
   if (status == LUA_OK) {
     lua_remove(L, -2);  /* remove modified line */
-    if (line[0] != '\0')  /* non empty? */
-      lua_saveline(L, line);  /* keep history */
+	if (line[0] != '\0') {/* non empty? */
+		lua_saveline(L, line);  /* keep history */
+	}
   }
   else
     lua_pop(L, 2);  /* pop result from 'luaL_loadbuffer' and modified line */
