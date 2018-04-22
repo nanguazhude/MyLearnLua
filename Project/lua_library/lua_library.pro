@@ -17,6 +17,7 @@ CONFIG(debug,debug|release){
 	TARGET = lua_libraryd
 	DESTDIR = $$PWD/../../debug
 }else{
+	DEFINES += NDEBUG
 	TARGET = lua_library
 	DESTDIR = $$PWD/../../release
 }

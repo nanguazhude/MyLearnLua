@@ -940,7 +940,7 @@ namespace {
 				$ItemTables.pop_back();
 			};
 
-			this->begin(this);
+			if constexpr(this->value) this->begin(this);
 
 		next_table:
 			while (false == $ItemTables.empty()) {
@@ -966,6 +966,12 @@ namespace {
 					}
 
 					print_table_begin();
+				}
+
+				if (varCurrent.$IsCircleTable) {
+					print_table_end();
+					pop_a_table();
+					continue;
 				}
 
 				varCurrent.pop(*this);
@@ -1045,7 +1051,7 @@ namespace {
 
 			}/*while*/
 
-			this->end(this);
+			if constexpr(this->value) this->end(this);
 
 		}
 		catch (const LuaCplusplusException &e) {
@@ -1070,8 +1076,14 @@ namespace {
 #else
 	template<typename LuaLock, typename TableItem>
 #endif
-	void CheckCircleTableData<false>::insert(LuaLock*, TableItem *arg) {
-		//$Tables.insert(  );
+	void CheckCircleTableData<false>::insert(LuaLock*L, TableItem *arg) {
+		const auto varTop = lua_gettop(*L);
+		lua_rawgeti(*L, L->$TmpTableIndex, arg->$IndexInTmpTable);
+		lua_rawgeti(*L, -1, 2);
+		assert(lua_istable(*L, -1) && "there must a table in the top");
+		const auto varTablePointer = lua_topointer(*L, -1);
+		lua_settop(*L, varTop)/*remove the data do not used*/;
+		arg->$IsCircleTable = this->hasTable(varTablePointer);
 	}
 
 #if defined(QUICK_CHECK_CODE)
@@ -1290,9 +1302,9 @@ namespace {
 			L->print_equal();
 			L->$Writer.write(std::get<1>(varI));
 			L->print_endl();
-	}
+		}
 
-}
+	}
 
 #if defined(QUICK_CHECK_CODE)
 	static inline void lua_table_to_text(lua_State * argL, const string_view & argTableName) {
