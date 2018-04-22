@@ -59,7 +59,7 @@ namespace {
 
 #if defined(DEBUG_THIS_LIB)
 	inline string_view debug_type_name(int i) {
-		switch ( i ) {
+		switch (i) {
 		case LUA_TNONE:return "LUA_TNONE"sv;
 		case LUA_TNIL:return "LUA_TNIL"sv;
 		case LUA_TBOOLEAN:return "LUA_TBOOLEAN"sv;
@@ -75,33 +75,33 @@ namespace {
 	}
 
 	static string debug_string;
-	inline string_view debug_type_value(lua_State * L,int i ) {
+	inline string_view debug_type_value(lua_State * L, int i) {
 		const auto t = lua_type(L, i);
 		debug_string += "[===["sv;
 		debug_string += debug_type_name(t);
 		debug_string += " : "sv;
 		switch (t) {
-		case LUA_TNONE:debug_string += "LUA_TNONE"sv;break;
-		case LUA_TNIL:debug_string += "LUA_TNIL"sv;break;
-		case LUA_TBOOLEAN: debug_string += (lua_toboolean(L, i) ? "true"sv : "false"sv);break ;
+		case LUA_TNONE:debug_string += "LUA_TNONE"sv; break;
+		case LUA_TNIL:debug_string += "LUA_TNIL"sv; break;
+		case LUA_TBOOLEAN: debug_string += (lua_toboolean(L, i) ? "true"sv : "false"sv); break;
 		case LUA_TLIGHTUSERDATA:debug_string += "LUA_TLIGHTUSERDATA"sv; break;
 		case LUA_TNUMBER: {
-			if ( lua_isinteger(L,i) ) {
-				debug_string += std::to_string( lua_tointeger(L,i) );
+			if (lua_isinteger(L, i)) {
+				debug_string += std::to_string(lua_tointeger(L, i));
 			}
 			else {
-				debug_string += std::to_string( lua_tonumber(L,i) );
+				debug_string += std::to_string(lua_tonumber(L, i));
 			}
 		}break;
 		case LUA_TSTRING: {
 			std::size_t n;
-			const auto d = luaL_tolstring(L,i,&n);
-			debug_string += string_view(d,n);
+			const auto d = luaL_tolstring(L, i, &n);
+			debug_string += string_view(d, n);
 		}break;
-		case LUA_TTABLE:return debug_string += "LUA_TTABLE"sv;break;
-		case LUA_TFUNCTION:return debug_string += "LUA_TFUNCTION"sv;break;
-		case LUA_TUSERDATA:return debug_string += "LUA_TUSERDATA"sv;break;
-		case LUA_TTHREAD:return debug_string += "LUA_TTHREAD"sv;break;
+		case LUA_TTABLE:return debug_string += "LUA_TTABLE"sv; break;
+		case LUA_TFUNCTION:return debug_string += "LUA_TFUNCTION"sv; break;
+		case LUA_TUSERDATA:return debug_string += "LUA_TUSERDATA"sv; break;
+		case LUA_TTHREAD:return debug_string += "LUA_TTHREAD"sv; break;
 		}
 		debug_string += "]===]"sv;
 		return debug_string;
@@ -120,6 +120,10 @@ namespace {
 			string_view print_able_name;
 		};
 		map<const void *, TableDetail> $Tables;
+		string_view $this_table_name = u8R"(tmp)"sv;
+		inline const string_view & get_this_table_name() const {
+			return $this_table_name;
+		}
 		inline bool hasTable(const void * const arg) const { return $Tables.count(arg) > 0; }
 		inline auto find(const void * const arg) const {
 			auto varPos = $Tables.find(arg);
@@ -162,6 +166,7 @@ namespace {
 		inline void insert(LuaLock*, TableItem *);
 		void begin(LuaLock*) {}
 		void end(LuaLock*) {}
+		const string_view & get_this_table_name() const { static string_view ans = ""sv; /*never used*/return ans; }
 #else
 		template<typename LuaLock, typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
@@ -256,11 +261,11 @@ namespace {
 						lua_pushvalue(arg, varThisTableIndex - 2);
 						lua_rawseti(arg, varThisTableIndex, 3);
 					}
- 
+
 #if defined(DEBUG_THIS_LIB)
 					lua_rawgeti(arg, varThisTableIndex, 1);
 					std::cout << "+==========" << std::endl;
-					std::cout << debug_type_value(arg,lua_gettop(arg)) << std::endl;
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 2);
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 3);
@@ -282,17 +287,17 @@ namespace {
 					*/
 					{
 						/* item.key */
-						lua_pushvalue(arg, arg.$UserKeyIndex );
+						lua_pushvalue(arg, arg.$UserKeyIndex);
 						lua_rawseti(arg, varThisTableIndex, 1);
 					}
 #if defined(DEBUG_THIS_LIB)
 					lua_rawgeti(arg, varThisTableIndex, 1);
 					std::cout << "===========" << std::endl;
-					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 2);
-					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 3);
-					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					std::cout << "===========" << std::endl;
 #endif
 					lua_settop(arg, arg.$UserKeyIndex);
@@ -327,9 +332,48 @@ namespace {
 
 		list< TableItem > $ItemTables;
 
-		string get_full_table_name(TableItem*) {
+		string __p_get_afull_table_name(TableItem * arg) {
+			/*get tmp table*/
+			lua_rawgeti(*this, this->$TmpTableIndex, arg->$IndexInTmpTable);
+			/*get name*/
+			lua_rawgeti(*this, -1, 2);
+			/*the name index*/
+			const auto varNameIndex = lua_gettop(*this);
+			/*convert the name to string*/
+			/*the name should be simple*/
+
 			return {};
 		}
+
+		string get_full_table_name(TableItem*arg) {
+			list< string > varAns;
+			{
+				TableItem * varI = arg;
+				const auto varTop = lua_gettop(*this);
+				/*跳过首个表...*/
+				while (varI&&varI->$Parent) {
+					auto var = varI;
+					varI = var->$Parent;
+					varAns.push_back(__p_get_afull_table_name(var));
+					lua_settop(*this, varTop)/*clean the value do not used*/;
+				}
+			}
+			const auto & varRootName = this->get_this_table_name();
+			std::size_t n = varRootName.size();
+			for (const auto & varI : varAns) {
+				n += varI.size();
+			}
+			string ans;
+			ans.reserve(n);
+			ans = varRootName;
+
+			for (auto & varI : varAns) {
+				ans += std::move(varI);
+			}
+
+			return std::move(ans);
+		}
+
 	public:
 
 		/* int to string */
@@ -1171,7 +1215,7 @@ namespace {
 		const auto varTablePointer = lua_topointer(*L, -1);
 		lua_settop(*L, varTop)/*remove the data do not used*/;
 		arg->$IsCircleTable = this->hasTable(varTablePointer);
-		if( arg->$IsCircleTable == false )
+		if (arg->$IsCircleTable == false)
 			this->$Tables.insert(varTablePointer);
 	}
 
@@ -1402,7 +1446,7 @@ namespace {
 	}
 #endif
 
-}/*namespace*/
+	}/*namespace*/
 
 
 #if defined(QUICK_CHECK_CODE)
