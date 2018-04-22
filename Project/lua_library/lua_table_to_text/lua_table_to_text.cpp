@@ -3,6 +3,7 @@
 #endif
 
 //#define QUICK_CHECK_CODE std::size_t(1)
+//#define DEBUG_THIS_LIB
 
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
@@ -54,6 +55,57 @@ namespace {
 	class LuaLock;
 #else
 	/*else*/
+#endif
+
+#if defined(DEBUG_THIS_LIB)
+	inline string_view debug_type_name(int i) {
+		switch ( i ) {
+		case LUA_TNONE:return "LUA_TNONE"sv;
+		case LUA_TNIL:return "LUA_TNIL"sv;
+		case LUA_TBOOLEAN:return "LUA_TBOOLEAN"sv;
+		case LUA_TLIGHTUSERDATA:return "LUA_TLIGHTUSERDATA"sv;
+		case LUA_TNUMBER:return "LUA_TNUMBER"sv;
+		case LUA_TSTRING:return "LUA_TSTRING"sv;
+		case LUA_TTABLE:return "LUA_TTABLE"sv;
+		case LUA_TFUNCTION:return "LUA_TFUNCTION"sv;
+		case LUA_TUSERDATA:return "LUA_TUSERDATA"sv;
+		case LUA_TTHREAD:return "LUA_TTHREAD"sv;
+		}
+		return "unknow"sv;
+	}
+
+	static string debug_string;
+	inline string_view debug_type_value(lua_State * L,int i ) {
+		const auto t = lua_type(L, i);
+		debug_string += "[===["sv;
+		debug_string += debug_type_name(t);
+		debug_string += " : "sv;
+		switch (t) {
+		case LUA_TNONE:debug_string += "LUA_TNONE"sv;break;
+		case LUA_TNIL:debug_string += "LUA_TNIL"sv;break;
+		case LUA_TBOOLEAN: debug_string += (lua_toboolean(L, i) ? "true"sv : "false"sv);break ;
+		case LUA_TLIGHTUSERDATA:debug_string += "LUA_TLIGHTUSERDATA"sv; break;
+		case LUA_TNUMBER: {
+			if ( lua_isinteger(L,i) ) {
+				debug_string += std::to_string( lua_tointeger(L,i) );
+			}
+			else {
+				debug_string += std::to_string( lua_tonumber(L,i) );
+			}
+		}break;
+		case LUA_TSTRING: {
+			std::size_t n;
+			const auto d = luaL_tolstring(L,i,&n);
+			debug_string += string_view(d,n);
+		}break;
+		case LUA_TTABLE:return debug_string += "LUA_TTABLE"sv;break;
+		case LUA_TFUNCTION:return debug_string += "LUA_TFUNCTION"sv;break;
+		case LUA_TUSERDATA:return debug_string += "LUA_TUSERDATA"sv;break;
+		case LUA_TTHREAD:return debug_string += "LUA_TTHREAD"sv;break;
+		}
+		debug_string += "]===]"sv;
+		return debug_string;
+	}
 #endif
 
 	template<>
@@ -204,6 +256,18 @@ namespace {
 						lua_pushvalue(arg, varThisTableIndex - 2);
 						lua_rawseti(arg, varThisTableIndex, 3);
 					}
+ 
+#if defined(DEBUG_THIS_LIB)
+					lua_rawgeti(arg, varThisTableIndex, 1);
+					std::cout << "+==========" << std::endl;
+					std::cout << debug_type_value(arg,lua_gettop(arg)) << std::endl;
+					lua_rawgeti(arg, varThisTableIndex, 2);
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
+					lua_rawgeti(arg, varThisTableIndex, 3);
+					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
+					std::cout << "+==========" << std::endl;
+#endif
+
 					/*移除不用的值*/
 					lua_settop(arg, arg.$UserKeyIndex);
 				}
@@ -221,19 +285,40 @@ namespace {
 						lua_pushvalue(arg, arg.$UserKeyIndex );
 						lua_rawseti(arg, varThisTableIndex, 1);
 					}
+#if defined(DEBUG_THIS_LIB)
+					lua_rawgeti(arg, varThisTableIndex, 1);
+					std::cout << "===========" << std::endl;
+					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					lua_rawgeti(arg, varThisTableIndex, 2);
+					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					lua_rawgeti(arg, varThisTableIndex, 3);
+					std::cout<< debug_type_value(arg, lua_gettop(arg)) <<std::endl;
+					std::cout << "===========" << std::endl;
+#endif
 					lua_settop(arg, arg.$UserKeyIndex);
 				}
 
 			}
 
 			inline void pop(const LuaLock & arg) {
+				/*清除不用的值,保证top不小于$UserKeyIndex*/
+				lua_settop(arg, arg.$UserKeyIndex);
 				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
 				const auto varThisTableIndex = lua_gettop(arg);
+#if defined(DEBUG_THIS_LIB)
+				std::cout << debug_type_value(arg, -1) << std::endl;
+#endif
 				/*key*/
 				lua_rawgeti(arg, varThisTableIndex, 1);
+#if defined(DEBUG_THIS_LIB)
+				std::cout << debug_type_value(arg, -1) << std::endl;
+#endif
 				lua_copy(arg, -1, arg.$UserKeyIndex);
 				/*table*/
 				lua_rawgeti(arg, varThisTableIndex, 2);
+#if defined(DEBUG_THIS_LIB)
+				std::cout << debug_type_value(arg, -1) << std::endl;
+#endif
 				lua_copy(arg, -1, arg.$UserTableIndex);
 				/*移除不用的值*/
 				lua_settop(arg, arg.$UserKeyIndex);
