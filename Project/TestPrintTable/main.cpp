@@ -30,12 +30,10 @@ inline void test_code2() {
 
 	luaL_dostring(L, u8R"!!!!!!!(
 a = { } ;  --[[ a empty talbe --]]
-a[1] = 1 ;
-a[2] = 2 ;
+ 
 
 a.b={  } ; --[[ b empty talbe --]]
-a.b[1] = 1 ;
-a.b[2] = 2 ;
+ 
 
 sstd.tcout( a );
 
@@ -50,7 +48,7 @@ return 0;
 int main(int argc, char *argv[]){
     QApplication app(argc, argv);
 
-	test_code1();
+	//test_code1();
 	test_code2();
 
     MainWindow window;

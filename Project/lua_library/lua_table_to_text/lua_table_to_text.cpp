@@ -209,17 +209,19 @@ namespace {
 				}
 				else {
 					$IsCreate = false;
+					lua_settop(arg, arg.$UserKeyIndex);
 					lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
-					const auto varThisTableIndex = lua_gettop(arg);
+					const auto varThisTableIndex = arg.$UserKeyIndex + 1;
 					/*
 					table key
 					table
 					*/
 					{
 						/* item.key */
-						lua_pushvalue(arg, varThisTableIndex - 1);
+						lua_pushvalue(arg, arg.$UserKeyIndex );
 						lua_rawseti(arg, varThisTableIndex, 1);
 					}
+					lua_settop(arg, arg.$UserKeyIndex);
 				}
 
 			}
@@ -1084,6 +1086,8 @@ namespace {
 		const auto varTablePointer = lua_topointer(*L, -1);
 		lua_settop(*L, varTop)/*remove the data do not used*/;
 		arg->$IsCircleTable = this->hasTable(varTablePointer);
+		if( arg->$IsCircleTable == false )
+			this->$Tables.insert(varTablePointer);
 	}
 
 #if defined(QUICK_CHECK_CODE)
