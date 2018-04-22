@@ -6,8 +6,8 @@
 */
 
 
-#ifndef lua_hxx
-#define lua_hxx
+#ifndef lua_hxx_cpp
+#define lua_hxx_cpp
 
 #include "lua_cplusplus_exception/lua_cplusplus_exception.hpp"
 
@@ -486,3 +486,6 @@ struct lua_Debug {
 
 
 #endif
+
+#include "lualib.hpp"
+#include "lauxlib.hpp"
