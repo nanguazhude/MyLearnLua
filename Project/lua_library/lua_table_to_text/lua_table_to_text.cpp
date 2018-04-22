@@ -22,6 +22,8 @@
 /***************************/
 #include <fstream>
 #include <iostream>
+/**************************/
+#include <cassert>
 
 using namespace std::string_view_literals;
 
@@ -33,8 +35,8 @@ namespace {
 	using string = std::string;// std::pmr::string;
 	template<typename T> using list = std::list<T>;// std::pmr::list;
 	template<typename T> using unique_ptr = std::unique_ptr<T>;
-	template<typename T, typename C = std::less<void> > using set = std::set<T, C>;
-	template<typename T, typename U, typename C = std::less<void> > using map = std::map<T, U, C>;
+	template<typename T, typename C = std::less<void>/**/> using set = std::set<T, C>;
+	template<typename T, typename U, typename C = std::less<void>/**/> using map = std::map<T, U, C>;
 	using std::make_unique;
 	/**************************************************************/
 
@@ -51,8 +53,9 @@ namespace {
 #if defined(QUICK_CHECK_CODE)
 	class LuaLock;
 #else
-
+	/*else*/
 #endif
+
 	template<>
 	class CheckCircleTableData<true> {
 	public:
@@ -62,7 +65,6 @@ namespace {
 		list<std::pair<const string_view, const string_view>/**/> $string_about_to_write;
 		class TableDetail {
 		public:
-			TableDetail * $Parent;
 			string_view print_able_name;
 		};
 		map<const void *, TableDetail> $Tables;
@@ -144,6 +146,11 @@ namespace {
 		std::array<char, concept_tmp_buffer_size() > $TmpStringBuffer;
 
 		class TableItem {
+			/*
+			1:key
+			2:table
+			3:table name
+			*/
 		public:
 			TableItem * const $Parent;
 			int const $IndexInTmpTable;
@@ -151,6 +158,7 @@ namespace {
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
 			bool $IsRootTableNameNull = false;
+			bool $IsCircleTable = false;
 			TableItem(TableItem * P, const int & arg) :$Parent(P), $IndexInTmpTable(arg) {}
 
 			inline void destory(const LuaLock & arg) {
@@ -231,6 +239,10 @@ namespace {
 		};
 
 		list< TableItem > $ItemTables;
+
+		string get_full_table_name(TableItem*) {
+			return {};
+		}
 	public:
 
 		/* int to string */
@@ -988,8 +1000,10 @@ namespace {
 						this->print_endl();
 					}break;
 					case  LUA_TTABLE: {
-						$ItemTables.emplace_back(&varCurrent, ++$CurrentTableIndex).push<true>(*this);
+						auto & varITT = $ItemTables.emplace_back(&varCurrent, ++$CurrentTableIndex);
+						varITT.push<true>(*this);
 						varCurrent.push<false>(*this);
+						this->insert(this, &varITT);
 						goto next_table;
 					}break;
 					case  LUA_TFUNCTION: {
@@ -1065,8 +1079,33 @@ namespace {
 #else
 	template<typename LuaLock, typename TableItem>
 #endif
-	void CheckCircleTableData<true>::insert(LuaLock*, TableItem *arg) {
-
+	void CheckCircleTableData<true>::insert(LuaLock*L, TableItem *arg) {
+		const auto varTop = lua_gettop(*L);
+		lua_rawgeti(*L, L->$TmpTableIndex, arg->$IndexInTmpTable);
+		lua_rawgeti(*L, -1, 2);
+		assert(lua_istable(*L, -1) && "there must a table in the top");
+		const auto varTablePointer = lua_topointer(*L, -1);
+		const auto varPPos = this->$Tables.find(varTablePointer);
+		const bool varIsHasTable = (varPPos != this->$Tables.end());
+		lua_settop(*L, varTop)/*remove the data do not used*/;
+		if (varIsHasTable) {
+			arg->$IsCircleTable = true;
+			this->$catch_print_able_name.push_back(L->get_full_table_name(arg));
+			const string_view varThisTableFullName = *(this->$catch_print_able_name.rbegin());
+			this->$string_about_to_write.emplace_back(
+				varThisTableFullName,
+				varPPos->second.print_able_name);
+		}
+		else {
+			arg->$IsCircleTable = false;
+			auto varTPos = this->$Tables.emplace(varTablePointer, TableDetail{});
+			/*如果被环表引用...*/
+			if (this->$about_circle_tables.count(varTablePointer) > 0) {
+				TableDetail & varDetail = varTPos.first->second;
+				this->$catch_print_able_name.push_back(L->get_full_table_name(arg));
+				varDetail.print_able_name = *(this->$catch_print_able_name.rbegin());
+			}
+		}
 	}
 
 #if defined(QUICK_CHECK_CODE)
@@ -1245,15 +1284,15 @@ namespace {
 	template<typename LuaLock >
 #endif
 	void CheckCircleTableData<true>::end(LuaLock*L) {
-
+		/*输出额外的值*/
 		for (const auto & varI : $string_about_to_write) {
 			L->$Writer.write(std::get<0>(varI));
 			L->print_equal();
 			L->$Writer.write(std::get<1>(varI));
 			L->print_endl();
-		}
-
 	}
+
+}
 
 #if defined(QUICK_CHECK_CODE)
 	static inline void lua_table_to_text(lua_State * argL, const string_view & argTableName) {
