@@ -36,12 +36,12 @@
 #include "lualib.hpp"
 #include "lauxlib.hpp"
 
-
+LUAMOD_API int sstd_open(lua_State *L);
 /*
 ** these libs are loaded by lua.c and are readily available to any Lua
 ** program
 */
-static const luaL_Reg loadedlibs[] = {
+static constexpr const luaL_Reg loadedlibs[] = {
   {"_G", luaopen_base},
   {LUA_LOADLIBNAME, luaopen_package},
   {LUA_COLIBNAME, luaopen_coroutine},
@@ -55,7 +55,8 @@ static const luaL_Reg loadedlibs[] = {
 #if defined(LUA_COMPAT_BITLIB)
   {LUA_BITLIBNAME, luaopen_bit32},
 #endif
-  {nullptr, nullptr}
+  {u8R"(sstd)",  sstd_open }/*open my libs*/,
+  {nullptr, nullptr},
 };
 
 

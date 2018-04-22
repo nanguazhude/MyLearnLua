@@ -1,5 +1,6 @@
 SOURCES += $$PWD/lua_table_to_text/lua_table_to_text.cpp
 SOURCES += $$PWD/lua_cplusplus_exception/lua_cplusplus_exception.cpp
+SOURCES += $$PWD/sstd/sstd.cpp
 
 SOURCES += $$PWD/lapi.cpp
 SOURCES += $$PWD/lauxlib.cpp

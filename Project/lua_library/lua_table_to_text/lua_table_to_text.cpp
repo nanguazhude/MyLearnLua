@@ -1375,68 +1375,78 @@ namespace {
 	}
 }/*::easy::writer*/
 
-/*
-input table/tablename or table
-no output
-*/
-template<bool V>
-static inline int _print_table_by_std_cout(lua_State * L) {
-	class Writer {
-	public:
-		inline void write(const string_view &arg) {
-			std::cout << arg;
-		}
-	};
-	return easy::writer::_p_print_table<V, Writer>(L);
-}/*print_table_by_std_cout*/
-
- /*
- input table/tablename filename or table filename
- no output
- */
-template<bool V>
-static inline int _print_table_by_std_ofstream(lua_State *L) {
-
-	class Writer {
-		unique_ptr<std::ofstream> outer;
-	public:
-		inline void write(const std::string_view &arg) {
-			(*outer) << arg;
-		}
-		Writer(lua_State *L, const std::string_view &arg) {
-			outer = make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
-			if (outer->is_open() == false) {
-				easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
-				lua_error(L);
+namespace {
+	/*
+	input table/tablename or table
+	no output
+	*/
+	template<bool V>
+	static inline int _print_table_by_std_cout(lua_State * L) {
+		class Writer {
+		public:
+			inline void write(const string_view &arg) {
+				std::cout << arg;
 			}
+		};
+		return easy::writer::_p_print_table<V, Writer>(L);
+	}/*print_table_by_std_cout*/
+
+	 /*
+	 input table/tablename filename or table filename
+	 no output
+	 */
+	template<bool V>
+	static inline int _print_table_by_std_ofstream(lua_State *L) {
+
+		class Writer {
+			unique_ptr<std::ofstream> outer;
+		public:
+			inline void write(const std::string_view &arg) {
+				(*outer) << arg;
+			}
+			Writer(lua_State *L, const std::string_view &arg) {
+				outer = make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
+				if (outer->is_open() == false) {
+					easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
+					lua_error(L);
+				}
+			}
+		};
+
+		std::size_t n = 0;
+		const auto data = lua_tolstring(L, -1, &n);
+		if (n > 0) {
+			const string varTmpData{ data,n };
+			lua_pop(L, 1);
+			return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
 		}
-	};
-
-	std::size_t n = 0;
-	const auto data = lua_tolstring(L, -1, &n);
-	if (n > 0) {
-		const string varTmpData{ data,n };
-		lua_pop(L, 1);
-		return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
+		else {
+			easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
+			lua_error(L);
+		}
+		return 0;
 	}
-	else {
-		easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
-		lua_error(L);
-	}
-	return 0;
-}
 
-LUA_API int print_table_by_std_ofstream(lua_State *L) {
+}/*namespace*/
+
+LUA_API int sstd_print_table_by_std_ofstream(lua_State *L);
+LUA_API int sstd_print_table_by_std_cout(lua_State *L);
+LUA_API int sstd_full_print_table_by_std_ofstream(lua_State *L);
+LUA_API int sstd_full_print_table_by_std_cout(lua_State *L);
+
+LUA_API int sstd_print_table_by_std_ofstream(lua_State *L) {
 	return _print_table_by_std_ofstream<false>(L);
 }
-LUA_API int print_table_by_std_cout(lua_State *L) {
+
+LUA_API int sstd_print_table_by_std_cout(lua_State *L) {
 	return _print_table_by_std_cout<false>(L);
 }
 
-LUA_API int full_print_table_by_std_ofstream(lua_State *L) {
+LUA_API int sstd_full_print_table_by_std_ofstream(lua_State *L) {
 	return _print_table_by_std_ofstream<true>(L);
 }
-LUA_API int full_print_table_by_std_cout(lua_State *L) {
+
+LUA_API int sstd_full_print_table_by_std_cout(lua_State *L) {
 	return _print_table_by_std_cout<true>(L);
 }
 
