@@ -99,7 +99,7 @@ namespace {
 			}
 		}break;
 		case LUA_TSTRING: {
-			std::size_t n;
+			std::size_t n = 0;
 			const auto d = luaL_tolstring(L, i, &n);
 			debug_string += string_view(d, n);
 		}break;
@@ -371,6 +371,10 @@ namespace {
 					return std::move(varAns2);
 				}
 				else {
+					/*
+					double to index is ill format 
+					this may be a error
+					*/
 					const auto varAns1 = this->double_to_string(lua_tonumber(*this, varNameIndex));
 					if (varAns1.empty()) { return {}; }
 					string varAns2;
