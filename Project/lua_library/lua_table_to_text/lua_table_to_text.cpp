@@ -414,9 +414,9 @@ namespace {
 				varAddEquals(varAns2);
 				varAns2 += u8R"([)"sv;
 				varAns2 += varAns1;
-				varAns2 += u8R"(] ])"sv;
-				varAddEquals(varAns2);
 				varAns2 += u8R"(])"sv;
+				varAddEquals(varAns2);
+				varAns2 += u8R"(] ])"sv;
 
 				return std::move(varAns2) ;
 			}break;
