@@ -2,8 +2,11 @@
 #define LUA_LIB std::size_t(1)
 #endif
 
-#define QUICK_CHECK_CODE std::size_t(1)
+//#define QUICK_CHECK_CODE std::size_t(1)
 //#define DEBUG_THIS_LIB
+#ifndef NDEBUG
+#define NDEBUG
+#endif
 
 #include "../lua.hpp"
 #include "../part_google_v8/include/double-conversion/double-conversion.h"
@@ -376,7 +379,7 @@ namespace {
 				std::size_t n = 0;
 				const auto d = lua_tolstring(*this,varNameIndex,&n);
 				if (n < 1) { return {}; }
-				string_view varAns1{d,n};
+				const string_view varAns1{d,n};
 				if ( this->is_simple_string(varAns1) ) {
 					string varAns2;
 					varAns2.reserve(4 + varAns1.size());
@@ -386,8 +389,36 @@ namespace {
 					return std::move(varAns2);
 				}
 				/*this may be a illformat name*/
+				const auto varEC = 1 + this->_p_get_equal_count( varAns1 );
+				string varAns2;
+				varAns2.reserve(/*[ [=[*/ ((4+varEC)<<1) + varAns1.size() );
 
-				return string( d,n );
+				auto varAddEquals = [varEC](string & ans) {
+					auto varECS = _p_get_equal(varEC);
+					if ( varECS ) {
+						ans += *varECS;
+					}
+					constexpr const auto varMES = max_equal_size();
+					auto varDIV = std::div( varEC , varMES );
+					varECS = _p_get_equal(varDIV.rem);
+					assert( varECS );
+					ans += *varECS;
+					varECS = _p_get_equal(varMES);
+					assert( varECS );
+					for (int i = 0; i < varDIV.quot; ++i) {
+						ans += *varECS;
+					}
+				};
+
+				varAns2 += u8R"([ [)"sv;
+				varAddEquals(varAns2);
+				varAns2 += u8R"([)"sv;
+				varAns2 += varAns1;
+				varAns2 += u8R"(] ])"sv;
+				varAddEquals(varAns2);
+				varAns2 += u8R"(])"sv;
+
+				return std::move(varAns2) ;
 			}break;
 			case LUA_TTABLE: {}break;
 			case LUA_TFUNCTION: {}break;
@@ -422,6 +453,7 @@ namespace {
 			}
 			const auto & varRootName = this->get_this_table_name();
 			std::size_t n = varRootName.size();
+			assert( std::as_const(n) );
 			for (const auto & varI : varAns) {
 				n += varI.size();
 			}
