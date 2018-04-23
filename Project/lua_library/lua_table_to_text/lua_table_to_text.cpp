@@ -346,7 +346,7 @@ namespace {
 			/*get tmp table*/
 			lua_rawgeti(*this, this->$TmpTableIndex, arg->$IndexInTmpTable);
 			/*get name*/
-			lua_rawgeti(*this, -1, 2);
+			lua_rawgeti(*this, -1, 3);
 			/*the name index*/
 			auto varNameIndex = lua_gettop(*this);
 			/*convert the name to string*/
@@ -450,6 +450,11 @@ namespace {
 		}
 
 		string get_full_table_name(TableItem*arg) {
+			/*如果是Root，则返回tmp*/
+			if ((arg->$Parent)==nullptr) {
+				return { this->get_this_table_name().data(),this->get_this_table_name().size() };
+			}
+
 			vector< string > varAns;
 			varAns.reserve(this->$ItemTables.size());
 			{
@@ -623,6 +628,7 @@ namespace {
 			auto & varI = $ItemTables.emplace_back(nullptr, ++$CurrentTableIndex);
 			varI.push<true>(*this);
 			varI.$IsRootTableNameNull = argTableName.empty();
+			this->insert(this, &varI);
 		}
 
 		enum class PrintNameType : int {
@@ -1522,6 +1528,10 @@ namespace {
 				}
 			}
 
+			/*
+			1 : key
+			2 : table 
+			*/
 			inline void push_create(const Pack & arg) {
 
 				/*创建索引表*/
@@ -1534,8 +1544,8 @@ namespace {
 					lua_rawseti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
 				}
 				/*
-				index table
-				this table
+				index table  索引表
+				this table   
 				parent table key
 				parent table
 				*/
@@ -1567,6 +1577,16 @@ namespace {
 				/*table*/
 				lua_rawgeti(arg, varThisTableIndex, 2);
 				lua_copy(arg, -1, arg.$UserTableIndex);
+				/************************************************/
+#if defined(DEBUG_THIS_LIB)
+				lua_rawgeti(arg, varThisTableIndex, 1);
+				std::cout << "+~========="sv << std::endl;
+				std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
+				lua_rawgeti(arg, varThisTableIndex, 2);
+				std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
+				std::cout << "+~========="sv << std::endl;
+#endif
+				/************************************************/
 				/*移除不用的值*/
 				lua_settop(arg, arg.$UserKeyIndex);
 			}
@@ -1590,6 +1610,7 @@ namespace {
 
 		lua_pushvalue(*L, L->$TableIndex);
 		lua_pushvalue(*L, L->$TableIndex);
+		lua_pushvalue(*L, L->$TableIndex);
 
 		int varCurrentIndex = 1;
 		{
@@ -1605,11 +1626,11 @@ namespace {
 			while (lua_next(varPack, varPack.$UserTableIndex)) {
 				const auto varType = lua_type(varPack, varValueIndex);
 				if (varType == LUA_TTABLE) {
-					const void * varTableIndexPointer = lua_topointer(*L, -1);
+					const void * varTableIndexPointer = lua_topointer(*L, varValueIndex);
 					auto varData = varAllTables.find(varTableIndexPointer);
 					if (varData != varAllTables.end()) {
 						$about_circle_tables.insert(varTableIndexPointer);
-						continue;
+						break;
 					}
 					else {
 						++varCurrentIndex;
