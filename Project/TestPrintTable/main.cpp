@@ -77,8 +77,8 @@ sstd.ftcout( a );
 int main(int argc, char *argv[]){
     QApplication app(argc, argv);
 
-	//test_code1();
-	//test_code2();
+	test_code1();
+	test_code2();
 	test_code3();
 
     MainWindow window;
