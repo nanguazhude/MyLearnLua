@@ -2,7 +2,7 @@
 #define LUA_LIB std::size_t(1)
 #endif
 
-//#define QUICK_CHECK_CODE std::size_t(1)
+#define QUICK_CHECK_CODE std::size_t(1)
 //#define DEBUG_THIS_LIB
 
 #include "../lua.hpp"
@@ -333,15 +333,77 @@ namespace {
 		list< TableItem > $ItemTables;
 
 		string __p_get_afull_table_name(TableItem * arg) {
+			int varTryCount = 0;
 			/*get tmp table*/
 			lua_rawgeti(*this, this->$TmpTableIndex, arg->$IndexInTmpTable);
 			/*get name*/
 			lua_rawgeti(*this, -1, 2);
 			/*the name index*/
-			const auto varNameIndex = lua_gettop(*this);
+			auto varNameIndex = lua_gettop(*this);
 			/*convert the name to string*/
 			/*the name should be simple*/
+		try_next:
+			++varTryCount;
+			const auto varType = lua_type(*this,varNameIndex);
+			switch (varType) {
+			case LUA_TNONE: {}break;
+			case LUA_TNIL: {}break;
+			case LUA_TBOOLEAN: {}break;
+			case LUA_TLIGHTUSERDATA: {}break;
+			case LUA_TNUMBER: {
+				if ( lua_isinteger(*this,varNameIndex) ) {
+					const auto varAns1 = this->int_to_string( lua_tointeger( *this,varNameIndex ) );
+					if (varAns1.empty()) { return {}; }
+					string varAns2;
+					varAns2.reserve(2+varAns1.size());
+					varAns2 += "["sv;
+					varAns2 += varAns1;
+					varAns2 += "]"sv;
+					return std::move(varAns2);
+				}
+				else {
+					const auto varAns1 = this->double_to_string(lua_tonumber(*this, varNameIndex));
+					if (varAns1.empty()) { return {}; }
+					string varAns2;
+					varAns2.reserve(2 + varAns1.size());
+					varAns2 += "["sv;
+					varAns2 += varAns1;
+					varAns2 += "]"sv;
+					return std::move(varAns2);
+				}
+			}break;
+			case LUA_TSTRING: {
+				std::size_t n = 0;
+				const auto d = lua_tolstring(*this,varNameIndex,&n);
+				if (n < 1) { return {}; }
+				string_view varAns1{d,n};
+				if ( this->is_simple_string(varAns1) ) {
+					string varAns2;
+					varAns2.reserve(4 + varAns1.size());
+					varAns2 += u8R"([")"sv;
+					varAns2 += varAns1;
+					varAns2 += u8R"("])"sv;
+					return std::move(varAns2);
+				}
+				/*this may be a illformat name*/
 
+				return string( d,n );
+			}break;
+			case LUA_TTABLE: {}break;
+			case LUA_TFUNCTION: {}break;
+			case LUA_TUSERDATA: {}break;
+			case LUA_TTHREAD: {}break;
+			}
+			
+			if (varTryCount > 1) { return{}; }
+
+			/*try __tostring*/
+			if (luaL_callmeta(*this, varNameIndex, "__tostring") &&
+				(lua_type(*this, -1) == LUA_TSTRING)){
+				varNameIndex = lua_gettop(*this);
+				goto try_next;
+			}
+			/*****************************************/
 			return {};
 		}
 
@@ -370,6 +432,7 @@ namespace {
 			for (auto & varI : varAns) {
 				ans += std::move(varI);
 			}
+			varAns.clear();
 
 			return std::move(ans);
 		}
