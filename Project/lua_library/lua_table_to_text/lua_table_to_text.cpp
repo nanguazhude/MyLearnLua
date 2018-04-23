@@ -435,8 +435,9 @@ namespace {
 			if (varTryCount > 1) { return{}; }
 
 			/*try __tostring*/
-			if (luaL_callmeta(*this, varNameIndex, "__tostring") &&
-				(lua_type(*this, -1) == LUA_TSTRING)) {
+			std::size_t n = 0;
+			luaL_tolstring(*this, varNameIndex, &n);
+			if (n > 0) {
 				varNameIndex = lua_gettop(*this);
 				goto try_next;
 			}
@@ -648,6 +649,10 @@ namespace {
 						return ($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
 					}
 					else {
+						/*
+						double to index is ill format
+						may be a error
+						*/
 						arg->$TableArrayContinue = false;
 						auto d = lua_tonumberx(*this, $UserKeyIndex, &n);
 						$Writer.write(u8R"([)"sv);
@@ -656,10 +661,21 @@ namespace {
 				}
 
 				arg->$TableArrayContinue = false;
-				std::size_t n;
-				auto d = lua_tolstring(*this, $UserKeyIndex, &n);
+				std::size_t n = 0;
+				const char * d = nullptr;
+
+				if ( lua_type(*this, $UserKeyIndex) == LUA_TSTRING ) {
+					d = lua_tolstring(*this, $UserKeyIndex, &n);
+				}
+				else {
+					d = luaL_tolstring(*this, $UserKeyIndex, &n);
+				}
+	 
 				if (n > 0) {
-					return ($Writer.write({ d,n }), true);
+					$Writer.write("[ "sv);
+					this->_p_print_value_string({ d,n });
+					$Writer.write(" ]"sv);
+					return true;
 				}
 				else {
 					return false;
@@ -700,6 +716,10 @@ namespace {
 						ReturnInThisFunction($Writer.write(int_to_string(d)), $Writer.write(u8R"(])"sv), true);
 					}
 					else {
+						/*
+						double to index is ill format
+						may be a error
+						*/
 						if (arg->$Parent) {
 							arg->$Parent->$TableArrayContinue = false;
 						}
@@ -713,10 +733,21 @@ namespace {
 					arg->$Parent->$TableArrayContinue = false;
 				}
 
-				std::size_t n;
-				auto d = lua_tolstring(*this, varTableNamePos, &n);
+				std::size_t n = 0;
+				const char * d = nullptr;
+
+				if (lua_type(*this, $UserKeyIndex) == LUA_TSTRING) {
+					d = lua_tolstring(*this, $UserKeyIndex, &n);
+				}
+				else {
+					d = luaL_tolstring(*this, $UserKeyIndex, &n);
+				}
+
 				if (n > 0) {
-					ReturnInThisFunction($Writer.write({ d,n }), true);
+					$Writer.write("[ "sv);
+					this->_p_print_value_string({ d,n });
+					$Writer.write(" ]"sv);
+					ReturnInThisFunction true;
 				}
 				else {
 					ReturnInThisFunction false;
@@ -1132,11 +1163,23 @@ namespace {
 				}
 			}
 		}
+
 		void print_value_string() {
 			constexpr const string_view empty_string = u8R"("")"sv;
 			if (lua_isstring(*this, $UserValueIndex)) {
-				std::size_t n;
+				std::size_t n = 0;
 				auto d = lua_tolstring(*this, $UserValueIndex, &n);
+				if (n > 0) {
+					string_view varData{ d ,n };
+					return _p_print_value_string(varData);
+				}
+				else {
+					return $Writer.write(empty_string);
+				}
+			}
+			else {
+				std::size_t n = 0;
+				auto d = luaL_tolstring(*this, $UserValueIndex, &n);
 				if (n > 0) {
 					string_view varData{ d ,n };
 					return _p_print_value_string(varData);
@@ -1641,16 +1684,16 @@ namespace {
 
 			const auto varInputTop = lua_gettop(L);
 
-			auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
 			if (lua_istable(L, varInputTop)) {
+				auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
 				var->print_table({});
 			}
 			else {
 				if (varInputTop > 1) {
+					const auto varTableIndex = varInputTop - 1;
 					{
-						const auto varTableIndex = varInputTop - 1;
 						if (lua_istable(L, varTableIndex)) {
-							lua_pushvalue(L, varTableIndex);
+							/*确保Table在最顶层*/
 						}
 						else {
 							__p_push_string(L, u8R"(can not find a table)"sv);
@@ -1658,12 +1701,28 @@ namespace {
 						}
 					}
 					std::size_t n = 0;
-					const auto varAns = lua_tolstring(L, varInputTop, &n);
+					const char * varAns = nullptr;
+
+					if (lua_type(L, varInputTop) == LUA_TSTRING) {
+						lua_tolstring(L, varInputTop, &n);
+					}
+					else {
+						luaL_tolstring(L, varInputTop, &n);
+					}
+
 					if (n > 0) {
+						/*
+						确保Table在最顶层
+						并且保证字符串地址有效...
+						*/
+						lua_pushvalue(L, varTableIndex);
+						auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
+						/*we do not check the table name is error or not*/
 						var->print_table({ varAns,n });
 					}
 					else {
-						var->error(u8R"(can not find table name)"sv);
+						__p_push_string(L, u8R"(can not find table name)"sv);
+						lua_error(L);
 					}
 				}
 				else {
@@ -1715,10 +1774,16 @@ namespace {
 		};
 
 		std::size_t n = 0;
-		const auto data = lua_tolstring(L, -1, &n);
+		const auto varTop = lua_gettop(L);
+		if (varTop < 2) {
+			easy::writer::__p_push_string(L, u8R"(input too less)"sv);
+			lua_error(L);
+		}
+		const auto data = luaL_tolstring(L, -1, &n);
 		if (n > 0) {
+			/*将Lua值拷贝到C++，确保数据地址有效*/
 			const string varTmpData{ data,n };
-			lua_pop(L, 1);
+			lua_settop(L, varTop - 1);
 			return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
 		}
 		else {
