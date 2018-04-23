@@ -1353,6 +1353,8 @@ namespace {
 			}
 
 			inline void pop(const Pack & arg) {
+				/*移除不用的值,确保堆栈大小*/
+				lua_settop(arg, arg.$UserKeyIndex);
 				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
 				const auto varThisTableIndex = lua_gettop(arg);
 				/*key*/
@@ -1392,7 +1394,7 @@ namespace {
 		}
 
 	next_table:
-		while (false == varAllTables.empty()) {
+		while (false == varStack.empty()) {
 			auto & varI = *varStack.rbegin();
 			varI.pop(varPack);
 
