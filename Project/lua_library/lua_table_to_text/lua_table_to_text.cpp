@@ -82,7 +82,7 @@ namespace {
 	static string debug_string;
 	inline string_view debug_type_value(lua_State * L, int i) {
 		const auto t = lua_type(L, i);
-		debug_string += "[===["sv;
+		debug_string = "[===["sv;
 		debug_string += debug_type_name(t);
 		debug_string += " : "sv;
 		switch (t) {
@@ -103,10 +103,10 @@ namespace {
 			const auto d = luaL_tolstring(L, i, &n);
 			debug_string += string_view(d, n);
 		}break;
-		case LUA_TTABLE:return debug_string += "LUA_TTABLE"sv; break;
-		case LUA_TFUNCTION:return debug_string += "LUA_TFUNCTION"sv; break;
-		case LUA_TUSERDATA:return debug_string += "LUA_TUSERDATA"sv; break;
-		case LUA_TTHREAD:return debug_string += "LUA_TTHREAD"sv; break;
+		case LUA_TTABLE:debug_string += "LUA_TTABLE"sv; break;
+		case LUA_TFUNCTION:debug_string += "LUA_TFUNCTION"sv; break;
+		case LUA_TUSERDATA:debug_string += "LUA_TUSERDATA"sv; break;
+		case LUA_TTHREAD:debug_string += "LUA_TTHREAD"sv; break;
 		}
 		debug_string += "]===]"sv;
 		return debug_string;
@@ -316,7 +316,7 @@ namespace {
 
 			inline void pop(const LuaLock & arg) {
 				/*清除不用的值,保证top不小于$UserKeyIndex*/
-				lua_settop(arg, arg.$UserKeyIndex);
+				lua_settop(arg, arg.$UserValueIndex);
 				lua_rawgeti(arg, arg.$TmpTableIndex, $IndexInTmpTable);
 				const auto varThisTableIndex = lua_gettop(arg);
 #if defined(DEBUG_THIS_LIB)
@@ -676,9 +676,7 @@ namespace {
 				}
 	 
 				if (n > 0) {
-					$Writer.write("[ "sv);
-					this->_p_print_value_string({ d,n });
-					$Writer.write(" ]"sv);
+					this->_p_print_value_string<false>({ d,n });
 					return true;
 				}
 				else {
@@ -740,17 +738,15 @@ namespace {
 				std::size_t n = 0;
 				const char * d = nullptr;
 
-				if (lua_type(*this, $UserKeyIndex) == LUA_TSTRING) {
-					d = lua_tolstring(*this, $UserKeyIndex, &n);
+				if (lua_type(*this, varTableNamePos) == LUA_TSTRING) {
+					d = lua_tolstring(*this, varTableNamePos, &n);
 				}
 				else {
-					d = luaL_tolstring(*this, $UserKeyIndex, &n);
+					d = luaL_tolstring(*this, varTableNamePos, &n);
 				}
 
 				if (n > 0) {
-					$Writer.write("[ "sv);
-					this->_p_print_value_string({ d,n });
-					$Writer.write(" ]"sv);
+					this->_p_print_value_string<false>({ d,n });
 					ReturnInThisFunction true;
 				}
 				else {
@@ -1129,23 +1125,26 @@ namespace {
 			return true;
 		}
 
+		template<bool Vxx = true>
 		void _p_print_value_string(const string_view varData) {
 			if (is_simple_string(varData)) {
-				$Writer.write(u8R"(")"sv);
+				if constexpr(Vxx == true) { $Writer.write(u8R"(")"sv); }
 				$Writer.write(varData);
-				$Writer.write(u8R"(")"sv);
+				if constexpr(Vxx == true) { $Writer.write(u8R"(")"sv); }
 			}
 			else {
 				auto varEC = _p_get_equal_count(varData) + 1;
 				auto varQE = _p_get_equal(varEC);
 				if (varQE) {
-					$Writer.write(u8R"([)"sv);
+					if constexpr(Vxx == true) { $Writer.write(u8R"([)"sv); }
+					else { $Writer.write(u8R"([ [)"sv); }
 					$Writer.write(*varQE);
 					$Writer.write(u8R"([)"sv);
 					$Writer.write(varData);
 					$Writer.write(u8R"(])"sv);
 					$Writer.write(*varQE);
-					$Writer.write(u8R"(])"sv);
+					if constexpr(Vxx == true) { $Writer.write(u8R"(])"sv); }
+					else { $Writer.write(u8R"(] ])"sv); }
 				}
 				else {
 					const auto varN = std::lldiv(varEC, max_equal_size());
@@ -1175,7 +1174,7 @@ namespace {
 				auto d = lua_tolstring(*this, $UserValueIndex, &n);
 				if (n > 0) {
 					string_view varData{ d ,n };
-					return _p_print_value_string(varData);
+					return this->_p_print_value_string<true>(varData);
 				}
 				else {
 					return $Writer.write(empty_string);
@@ -1185,8 +1184,8 @@ namespace {
 				std::size_t n = 0;
 				auto d = luaL_tolstring(*this, $UserValueIndex, &n);
 				if (n > 0) {
-					string_view varData{ d ,n };
-					return _p_print_value_string(varData);
+					const string_view varData{ d ,n };
+					return this->_p_print_value_string<true>(varData);
 				}
 				else {
 					return $Writer.write(empty_string);
@@ -1236,7 +1235,10 @@ namespace {
 				$ItemTables.pop_back();
 			};
 
-			if constexpr(this->value) this->begin(argTableName, this);
+			if constexpr(this->value) {
+				this->begin(argTableName, this);
+				(*$ItemTables.rbegin()).$IsRootTableNameNull = false;
+			};
 
 		next_table:
 			while (false == $ItemTables.empty()) {
@@ -1258,6 +1260,10 @@ namespace {
 							if (false == varCurrent.$Parent->$TableArrayContinue) {
 								this->print_equal();
 							}
+						}
+						else {
+							/*we have print table name , then print equal */
+							this->print_equal();
 						}
 					}
 
@@ -1569,7 +1575,7 @@ namespace {
 
 		Pack varPack{ *L };
 
-		lua_pushvalue(*L, L->$TmpTableIndex);
+		lua_createtable(*L, concept_min_tmp_table_size(),0);
 		varPack.$TmpTableIndex = lua_gettop(*L);
 
 		lua_pushvalue(*L, L->$TableIndex);
@@ -1708,10 +1714,10 @@ namespace {
 					const char * varAns = nullptr;
 
 					if (lua_type(L, varInputTop) == LUA_TSTRING) {
-						lua_tolstring(L, varInputTop, &n);
+						varAns = lua_tolstring(L, varInputTop, &n);
 					}
 					else {
-						luaL_tolstring(L, varInputTop, &n);
+						varAns = luaL_tolstring(L, varInputTop, &n);
 					}
 
 					if (n > 0) {

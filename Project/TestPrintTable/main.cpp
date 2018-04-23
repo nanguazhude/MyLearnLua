@@ -13,7 +13,10 @@ a = { } ; --[[ a empty talbe --]]
 a[1] = 1 ;
 a[2] = 2 ;
 
+print("---------------------")
 sstd.tcout( a );
+print("---------------------")
+sstd.ftcout( a , "mytest_0" );
 
 return 0;
 
@@ -29,13 +32,15 @@ inline void test_code2() {
 	luaL_openlibs(L);
 
 	luaL_dostring(L, u8R"!!!!!!!(
-a = { } ;  --[[ a empty talbe --]]
+a = { x = 1 ; } ;  --[[ a empty talbe --]]
  
 
-a.b={  } ; --[[ b empty talbe --]]
+a.b={ [ "y" ] = 2 ; } ; --[[ b empty talbe --]]
  
-
-sstd.tcout( a );
+print("---------------------")
+--sstd.tcout( a );
+print("---------------------")
+sstd.ftcout( a );
 
 return 0;
 
@@ -48,7 +53,7 @@ return 0;
 int main(int argc, char *argv[]){
     QApplication app(argc, argv);
 
-	//test_code1();
+	test_code1();
 	test_code2();
 
     MainWindow window;
