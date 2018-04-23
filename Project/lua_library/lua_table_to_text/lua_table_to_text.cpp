@@ -14,6 +14,7 @@
 #include <set>
 #include <map>
 #include <list>
+#include <vector>
 #include <array>
 #include <memory>
 #include <string>
@@ -37,6 +38,7 @@ namespace {
 	/**************************************************************/
 	/* change here to change how to use memory */
 	using string = std::string;// std::pmr::string;
+	template<typename T> using vector = std::vector<T>;
 	template<typename T> using list = std::list<T>;// std::pmr::list;
 	template<typename T> using unique_ptr = std::unique_ptr<T>;
 	template<typename T, typename C = std::less<void>/**/> using set = std::set<T, C>;
@@ -165,14 +167,14 @@ namespace {
 			return std::make_pair(varPos, !(varPos == $Tables.end()));
 		}
 		inline void parent_clear() { $Tables.clear(); }
-		const string_view & get_this_table_name() const { 
-			static string_view ans = ""sv; 
+		const string_view & get_this_table_name() const {
+			static string_view ans = ""sv;
 			/*never used*/return ans;
 		}
 #if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
-		void begin(const string_view &,LuaLock*) {}
+		void begin(const string_view &, LuaLock*) {}
 		void end(LuaLock*) {}
 #else
 		template<typename LuaLock, typename TableItem>
@@ -351,18 +353,18 @@ namespace {
 			/*the name should be simple*/
 		try_next:
 			++varTryCount;
-			const auto varType = lua_type(*this,varNameIndex);
+			const auto varType = lua_type(*this, varNameIndex);
 			switch (varType) {
 			case LUA_TNONE: {}break;
 			case LUA_TNIL: {}break;
 			case LUA_TBOOLEAN: {}break;
 			case LUA_TLIGHTUSERDATA: {}break;
 			case LUA_TNUMBER: {
-				if ( lua_isinteger(*this,varNameIndex) ) {
-					const auto varAns1 = this->int_to_string( lua_tointeger( *this,varNameIndex ) );
+				if (lua_isinteger(*this, varNameIndex)) {
+					const auto varAns1 = this->int_to_string(lua_tointeger(*this, varNameIndex));
 					if (varAns1.empty()) { return {}; }
 					string varAns2;
-					varAns2.reserve(2+varAns1.size());
+					varAns2.reserve(2 + varAns1.size());
 					varAns2 += "["sv;
 					varAns2 += varAns1;
 					varAns2 += "]"sv;
@@ -381,10 +383,10 @@ namespace {
 			}break;
 			case LUA_TSTRING: {
 				std::size_t n = 0;
-				const auto d = lua_tolstring(*this,varNameIndex,&n);
+				const auto d = lua_tolstring(*this, varNameIndex, &n);
 				if (n < 1) { return {}; }
-				const string_view varAns1{d,n};
-				if ( this->is_simple_string(varAns1) ) {
+				const string_view varAns1{ d,n };
+				if (this->is_simple_string(varAns1)) {
 					string varAns2;
 					varAns2.reserve(4 + varAns1.size());
 					varAns2 += u8R"([")"sv;
@@ -393,22 +395,22 @@ namespace {
 					return std::move(varAns2);
 				}
 				/*this may be a illformat name*/
-				const auto varEC = 1 + this->_p_get_equal_count( varAns1 );
+				const auto varEC = 1 + this->_p_get_equal_count(varAns1);
 				string varAns2;
-				varAns2.reserve(/*[ [=[*/ ((4+varEC)<<1) + varAns1.size() );
+				varAns2.reserve(/*[ [=[*/ ((4 + varEC) << 1) + varAns1.size());
 
 				auto varAddEquals = [varEC](string & ans) {
 					auto varECS = _p_get_equal(varEC);
-					if ( varECS ) {
+					if (varECS) {
 						ans += *varECS;
 					}
 					constexpr const auto varMES = max_equal_size();
-					auto varDIV = std::div( varEC , varMES );
+					auto varDIV = std::div(varEC, varMES);
 					varECS = _p_get_equal(varDIV.rem);
-					assert( varECS );
+					assert(varECS);
 					ans += *varECS;
 					varECS = _p_get_equal(varMES);
-					assert( varECS );
+					assert(varECS);
 					for (int i = 0; i < varDIV.quot; ++i) {
 						ans += *varECS;
 					}
@@ -422,19 +424,19 @@ namespace {
 				varAddEquals(varAns2);
 				varAns2 += u8R"(] ])"sv;
 
-				return std::move(varAns2) ;
+				return std::move(varAns2);
 			}break;
 			case LUA_TTABLE: {}break;
 			case LUA_TFUNCTION: {}break;
 			case LUA_TUSERDATA: {}break;
 			case LUA_TTHREAD: {}break;
 			}
-			
+
 			if (varTryCount > 1) { return{}; }
 
 			/*try __tostring*/
 			if (luaL_callmeta(*this, varNameIndex, "__tostring") &&
-				(lua_type(*this, -1) == LUA_TSTRING)){
+				(lua_type(*this, -1) == LUA_TSTRING)) {
 				varNameIndex = lua_gettop(*this);
 				goto try_next;
 			}
@@ -443,7 +445,8 @@ namespace {
 		}
 
 		string get_full_table_name(TableItem*arg) {
-			list< string > varAns;
+			vector< string > varAns;
+			varAns.reserve(this->$ItemTables.size());
 			{
 				TableItem * varI = arg;
 				const auto varTop = lua_gettop(*this);
@@ -457,7 +460,7 @@ namespace {
 			}
 			const auto & varRootName = this->get_this_table_name();
 			std::size_t n = varRootName.size();
-			assert( std::as_const(n) );
+			assert(std::as_const(n));
 			for (const auto & varI : varAns) {
 				n += varI.size();
 			}
@@ -465,10 +468,14 @@ namespace {
 			ans.reserve(n);
 			ans = varRootName;
 
-			for (auto & varI : varAns) {
-				ans += std::move(varI);
+			{
+				const auto varE = varAns.rend();
+				auto varI = varAns.rbegin();
+				for (; varI != varE; ++varI) {
+					ans += std::move(*varI);
+				}
+				varAns.clear();
 			}
-			varAns.clear();
 
 			return std::move(ans);
 		}
@@ -1061,6 +1068,12 @@ namespace {
 		}
 
 		bool static inline is_simple_string(const string_view & arg) {
+			/*empty string return true*/
+			if (arg.empty()) { return true; }
+			/*if start with number return false*/
+			if (const auto varI = arg[0]; ((varI <= '9') && (varI >= '0'))) {
+				return false;
+			}
 			/* a-z A-Z 0-9 _ */
 			for (const auto & varI : arg) {
 				if (varI & 0b010000000) {/*最高位是1肯定不符合要求...*/
@@ -1176,7 +1189,7 @@ namespace {
 				$ItemTables.pop_back();
 			};
 
-			if constexpr(this->value) this->begin(argTableName,this);
+			if constexpr(this->value) this->begin(argTableName, this);
 
 		next_table:
 			while (false == $ItemTables.empty()) {
@@ -1220,16 +1233,18 @@ namespace {
 							(varType == LUA_TNUMBER) ||
 							(varType == LUA_TSTRING) ||
 							(varType == LUA_TTABLE)
-							) {break;}
+							) {
+							break;
+						}
 						const auto varTop = lua_gettop(*this);
 						/*then try __tostring*/
-						if (luaL_callmeta(*this, this->$UserValueIndex , "__tostring") &&
+						if (luaL_callmeta(*this, this->$UserValueIndex, "__tostring") &&
 							(lua_type(*this, -1) == LUA_TSTRING)) {
 							varType = LUA_TSTRING;
-							lua_copy(*this,-1, this->$UserValueIndex);
+							lua_copy(*this, -1, this->$UserValueIndex);
 						}
 						/*remove the data do not used*/
-						lua_settop(*this,varTop);
+						lua_settop(*this, varTop);
 					} while (false);
 					/**********************************************/
 					switch (varType) {
@@ -1239,7 +1254,7 @@ namespace {
 						if (false == this->print_name(&varCurrent)) break;
 						if (false == varCurrent.$TableArrayContinue) this->print_equal();
 						this->print_value_bool();
-						this->$Writer.write(u8R"( --[[ bool --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ bool --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
@@ -1247,21 +1262,21 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_lightuserdata();
-						this->$Writer.write(u8R"( --[[ lightuserdata --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ lightuserdata --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TNUMBER: {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_number();
-						this->$Writer.write(u8R"( --[[ number --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ number --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TSTRING: {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_string();
-						this->$Writer.write(u8R"( --[[ string --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ string --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TTABLE: {
@@ -1276,7 +1291,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_function();
-						this->$Writer.write(u8R"( --[[ function --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ function --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
@@ -1284,7 +1299,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_userdata();
-						this->$Writer.write(u8R"( --[[ userdata --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ userdata --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
@@ -1292,7 +1307,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_thread();
-						this->$Writer.write(u8R"( --[[ thread --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ thread --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
@@ -1300,7 +1315,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_numtags();
-						this->$Writer.write(u8R"( --[[ numtags --]] )"sv);
+						//this->$Writer.write(u8R"( --[[ numtags --]] )"sv);
 						this->print_endl();
 					}break;
 					}/*switch*/
@@ -1389,7 +1404,7 @@ namespace {
 #else
 	template<typename LuaLock >
 #endif
-	void CheckCircleTableData<true>::begin(const string_view & argRTName,LuaLock*L) {
+	void CheckCircleTableData<true>::begin(const string_view & argRTName, LuaLock*L) {
 		{/*保存真实表的名称*/
 			this->$real_root_table_name = argRTName;
 			L->$Writer.write(u8R"(local )"sv);
@@ -1575,7 +1590,7 @@ namespace {
 			L->print_endl();
 		}
 		/*输出return 表名*/
-		if ( this->$real_root_table_name.empty() ) {
+		if (this->$real_root_table_name.empty()) {
 			L->$Writer.write(u8R"(
 return tmp;
 --[[ endl of the table --]]
@@ -1599,7 +1614,7 @@ return tmp;
 	}
 #endif
 
-	}/*namespace*/
+}/*namespace*/
 
 
 #if defined(QUICK_CHECK_CODE)
