@@ -115,6 +115,7 @@ namespace {
 	class CheckCircleTableData<true> {
 	public:
 		const constexpr static bool value = true;
+		string_view $real_root_table_name;
 		list<string> $catch_print_able_name/*缓冲所有名字*/;
 		set<const void *> $about_circle_tables;
 		list<std::pair<const string_view, const string_view>/**/> $string_about_to_write;
@@ -140,13 +141,13 @@ namespace {
 #if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
-		void begin(LuaLock*);
+		void begin(const string_view &, LuaLock*);
 		void end(LuaLock*);
 #else
 		template<typename LuaLock, typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
 		template<typename LuaLock>
-		void begin(LuaLock*);
+		void begin(const string_view &, LuaLock*);
 		template<typename LuaLock>
 		void end(LuaLock*);
 #endif
@@ -164,17 +165,20 @@ namespace {
 			return std::make_pair(varPos, !(varPos == $Tables.end()));
 		}
 		inline void parent_clear() { $Tables.clear(); }
+		const string_view & get_this_table_name() const { 
+			static string_view ans = ""sv; 
+			/*never used*/return ans;
+		}
 #if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
-		void begin(LuaLock*) {}
+		void begin(const string_view &,LuaLock*) {}
 		void end(LuaLock*) {}
-		const string_view & get_this_table_name() const { static string_view ans = ""sv; /*never used*/return ans; }
 #else
 		template<typename LuaLock, typename TableItem>
 		inline void insert(LuaLock*, TableItem *);
 		template<typename LuaLock>
-		void begin(LuaLock*) {/*just do nothing*/ }
+		void begin(const string_view &, LuaLock*) {/*just do nothing*/ }
 		template<typename LuaLock>
 		void end(LuaLock*) {/*just do nothing*/ }
 #endif
@@ -596,9 +600,14 @@ namespace {
 			}
 			/*初始化$ItemTables*/
 			$ItemTables.clear();
-			lua_pushvalue($L, $TableIndex);
-			push_string(argTableName);
-			lua_pushvalue($L, $TableIndex);
+			lua_pushvalue($L, $TableIndex)/*the root table*/;
+			if constexpr(this->value) {/*如果是完全表,输出tmp*/
+				push_string(get_this_table_name());
+			}
+			else {
+				push_string(argTableName)/*the table name*/;
+			}
+			lua_pushvalue($L, $TableIndex)/*this will not be used*/;
 			auto & varI = $ItemTables.emplace_back(nullptr, ++$CurrentTableIndex);
 			varI.push<true>(*this);
 			varI.$IsRootTableNameNull = argTableName.empty();
@@ -1166,7 +1175,7 @@ namespace {
 				$ItemTables.pop_back();
 			};
 
-			if constexpr(this->value) this->begin(this);
+			if constexpr(this->value) this->begin(argTableName,this);
 
 		next_table:
 			while (false == $ItemTables.empty()) {
@@ -1352,7 +1361,11 @@ namespace {
 #else
 	template<typename LuaLock >
 #endif
-	void CheckCircleTableData<true>::begin(LuaLock*L) {
+	void CheckCircleTableData<true>::begin(const string_view & argRTName,LuaLock*L) {
+		{/*保存真实表的名称*/
+			this->$real_root_table_name = argRTName;
+			L->$Writer.write(u8R"(local )"sv);
+		}
 		/*遍历整个表，记录下要索引表的名称*/
 		const auto RPos = lua_gettop(*L);
 #undef ReturnInThisFunction
@@ -1533,7 +1546,22 @@ namespace {
 			L->$Writer.write(std::get<1>(varI));
 			L->print_endl();
 		}
-
+		/*输出return 表名*/
+		if ( this->$real_root_table_name.empty() ) {
+			L->$Writer.write(u8R"(
+return tmp;
+--[[ endl of the table --]]
+)"sv);
+		}
+		else {
+			L->$Writer.write(u8R"(
+)"sv);
+			L->$Writer.write(this->$real_root_table_name);
+			L->$Writer.write(u8R"( = tmp ;
+return tmp;
+--[[ endl of the table --]]
+)"sv);
+		}
 	}
 
 #if defined(QUICK_CHECK_CODE)
