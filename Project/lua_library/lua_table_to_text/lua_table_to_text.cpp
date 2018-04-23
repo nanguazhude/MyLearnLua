@@ -628,7 +628,6 @@ namespace {
 			auto & varI = $ItemTables.emplace_back(nullptr, ++$CurrentTableIndex);
 			varI.push<true>(*this);
 			varI.$IsRootTableNameNull = argTableName.empty();
-			this->insert(this, &varI);
 		}
 
 		enum class PrintNameType : int {
@@ -1241,10 +1240,14 @@ namespace {
 				$ItemTables.pop_back();
 			};
 
-			if constexpr(this->value) {
-				this->begin(argTableName, this);
-				(*$ItemTables.rbegin()).$IsRootTableNameNull = false;
-			};
+			{
+				auto & varI = *$ItemTables.rbegin();
+				if constexpr(this->value) {
+					this->begin(argTableName, this);
+					varI.$IsRootTableNameNull = false;
+				};
+				this->insert(this, &varI);
+			}
 
 		next_table:
 			while (false == $ItemTables.empty()) {
@@ -1627,10 +1630,9 @@ namespace {
 				const auto varType = lua_type(varPack, varValueIndex);
 				if (varType == LUA_TTABLE) {
 					const void * varTableIndexPointer = lua_topointer(*L, varValueIndex);
-					auto varData = varAllTables.find(varTableIndexPointer);
+					const auto varData = varAllTables.find(varTableIndexPointer);
 					if (varData != varAllTables.end()) {
 						$about_circle_tables.insert(varTableIndexPointer);
-						break;
 					}
 					else {
 						++varCurrentIndex;
