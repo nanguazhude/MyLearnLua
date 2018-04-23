@@ -55,7 +55,7 @@ namespace {
 	/* 连续'='的最大优化值 */
 	constexpr int inline max_equal_size() { return 256; }
 
-	template<bool> class CheckCircleTableData;
+	template<bool> class CheckCycleTableData;
 #if defined(QUICK_CHECK_CODE)
 	class LuaLock;
 #else
@@ -114,19 +114,20 @@ namespace {
 #endif
 
 	template<>
-	class CheckCircleTableData<true> {
+	class CheckCycleTableData<true> {
 	public:
 		const constexpr static bool value = true;
 		string_view $real_root_table_name;
 		list<string> $catch_print_able_name/*缓冲所有名字*/;
-		set<const void *> $about_circle_tables;
+		set<const void *> $about_cycle_tables;
 		list<std::pair<const string_view, const string_view>/**/> $string_about_to_write;
+		constexpr static const string_view $error_cycle_table_name = u8R"("error_empty_cycle_table_name")"sv;
 		class TableDetail {
 		public:
-			string_view print_able_name;
+			string_view print_able_name = $error_cycle_table_name;
 		};
 		map<const void *, TableDetail> $Tables;
-		const string_view $this_table_name = u8R"(tmp)"sv;
+		constexpr static const string_view $this_table_name = u8R"(tmp)"sv;
 		inline const string_view & get_this_table_name() const {
 			return $this_table_name;
 		}
@@ -138,7 +139,7 @@ namespace {
 		inline void parent_clear() {
 			$catch_print_able_name.clear();
 			$Tables.clear();
-			$about_circle_tables.clear();
+			$about_cycle_tables.clear();
 		}
 #if defined(QUICK_CHECK_CODE)
 		template<typename TableItem>
@@ -157,7 +158,7 @@ namespace {
 	};
 
 	template<>
-	class CheckCircleTableData<false> {
+	class CheckCycleTableData<false> {
 	public:
 		const constexpr static bool value = false;
 		set<const void *> $Tables;
@@ -196,7 +197,7 @@ namespace {
 #else
 	template<typename WType/* WType w; w.write(const string_view &); */>
 #endif
-	class LuaLock :public CheckCircleTableData<WType::value> {
+	class LuaLock :public CheckCycleTableData<WType::value> {
 		/*prvate:memory:new&delete*/
 	public:
 		lua_State * $L;
@@ -224,7 +225,7 @@ namespace {
 			bool $TableArrayContinue = true;
 			bool $IsCreate = true;
 			bool $IsRootTableNameNull = false;
-			bool $IsCircleTable = false;
+			bool $IscycleTable = false;
 			TableItem(TableItem * P, const int & arg) :$Parent(P), $IndexInTmpTable(arg) {}
 
 			inline void destory(const LuaLock & arg) {
@@ -1279,7 +1280,7 @@ namespace {
 					print_table_begin();
 				}
 
-				if (varCurrent.$IsCircleTable) {
+				if (varCurrent.$IscycleTable) {
 					print_table_end();
 					pop_a_table();
 					continue;
@@ -1416,15 +1417,15 @@ namespace {
 #else
 	template<typename LuaLock, typename TableItem>
 #endif
-	void CheckCircleTableData<false>::insert(LuaLock*L, TableItem *arg) {
+	void CheckCycleTableData<false>::insert(LuaLock*L, TableItem *arg) {
 		const auto varTop = lua_gettop(*L);
 		lua_rawgeti(*L, L->$TmpTableIndex, arg->$IndexInTmpTable);
 		lua_rawgeti(*L, -1, 2);
 		assert(lua_istable(*L, -1) && "there must a table in the top");
 		const auto varTablePointer = lua_topointer(*L, -1);
 		lua_settop(*L, varTop)/*remove the data do not used*/;
-		arg->$IsCircleTable = this->hasTable(varTablePointer);
-		if (arg->$IsCircleTable == false)
+		arg->$IscycleTable = this->hasTable(varTablePointer);
+		if (arg->$IscycleTable == false)
 			this->$Tables.insert(varTablePointer);
 	}
 
@@ -1433,7 +1434,7 @@ namespace {
 #else
 	template<typename LuaLock, typename TableItem>
 #endif
-	void CheckCircleTableData<true>::insert(LuaLock*L, TableItem *arg) {
+	void CheckCycleTableData<true>::insert(LuaLock*L, TableItem *arg) {
 		const auto varTop = lua_gettop(*L);
 		lua_rawgeti(*L, L->$TmpTableIndex, arg->$IndexInTmpTable);
 		lua_rawgeti(*L, -1, 2);
@@ -1443,7 +1444,7 @@ namespace {
 		const bool varIsHasTable = (varPPos != this->$Tables.end());
 		lua_settop(*L, varTop)/*remove the data do not used*/;
 		if (varIsHasTable) {
-			arg->$IsCircleTable = true;
+			arg->$IscycleTable = true;
 			this->$catch_print_able_name.push_back(L->get_full_table_name(arg));
 			const string_view varThisTableFullName = *(this->$catch_print_able_name.rbegin());
 			this->$string_about_to_write.emplace_back(
@@ -1451,10 +1452,10 @@ namespace {
 				varPPos->second.print_able_name);
 		}
 		else {
-			arg->$IsCircleTable = false;
+			arg->$IscycleTable = false;
 			auto varTPos = this->$Tables.emplace(varTablePointer, TableDetail{});
 			/*如果被环表引用...*/
-			if (this->$about_circle_tables.count(varTablePointer) > 0) {
+			if (this->$about_cycle_tables.count(varTablePointer) > 0) {
 				TableDetail & varDetail = varTPos.first->second;
 				this->$catch_print_able_name.push_back(L->get_full_table_name(arg));
 				varDetail.print_able_name = *(this->$catch_print_able_name.rbegin());
@@ -1466,7 +1467,7 @@ namespace {
 #else
 	template<typename LuaLock >
 #endif
-	void CheckCircleTableData<true>::begin(const string_view & argRTName, LuaLock*L) {
+	void CheckCycleTableData<true>::begin(const string_view & argRTName, LuaLock*L) {
 		{/*保存真实表的名称*/
 			this->$real_root_table_name = argRTName;
 			L->$Writer.write(u8R"(local )"sv);
@@ -1632,7 +1633,7 @@ namespace {
 					const void * varTableIndexPointer = lua_topointer(*L, varValueIndex);
 					const auto varData = varAllTables.find(varTableIndexPointer);
 					if (varData != varAllTables.end()) {
-						$about_circle_tables.insert(varTableIndexPointer);
+						$about_cycle_tables.insert(varTableIndexPointer);
 					}
 					else {
 						++varCurrentIndex;
@@ -1657,7 +1658,7 @@ namespace {
 #else
 	template<typename LuaLock >
 #endif
-	void CheckCircleTableData<true>::end(LuaLock*L) {
+	void CheckCycleTableData<true>::end(LuaLock*L) {
 		/*输出额外的值*/
 		for (const auto & varI : $string_about_to_write) {
 			L->$Writer.write(std::get<0>(varI));
