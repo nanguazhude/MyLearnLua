@@ -1239,6 +1239,7 @@ namespace {
 						if (false == this->print_name(&varCurrent)) break;
 						if (false == varCurrent.$TableArrayContinue) this->print_equal();
 						this->print_value_bool();
+						this->$Writer.write(u8R"( --[[ bool --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
@@ -1246,18 +1247,21 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_lightuserdata();
+						this->$Writer.write(u8R"( --[[ lightuserdata --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TNUMBER: {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_number();
+						this->$Writer.write(u8R"( --[[ number --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TSTRING: {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_string();
+						this->$Writer.write(u8R"( --[[ string --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TTABLE: {
@@ -1272,6 +1276,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_function();
+						this->$Writer.write(u8R"( --[[ function --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
@@ -1279,6 +1284,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_userdata();
+						this->$Writer.write(u8R"( --[[ userdata --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
@@ -1286,6 +1292,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_thread();
+						this->$Writer.write(u8R"( --[[ thread --]] )"sv);
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
@@ -1293,6 +1300,7 @@ namespace {
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_numtags();
+						this->$Writer.write(u8R"( --[[ numtags --]] )"sv);
 						this->print_endl();
 					}break;
 					}/*switch*/
