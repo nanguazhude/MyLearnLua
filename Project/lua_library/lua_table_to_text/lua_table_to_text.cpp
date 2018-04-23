@@ -124,7 +124,7 @@ namespace {
 			string_view print_able_name;
 		};
 		map<const void *, TableDetail> $Tables;
-		string_view $this_table_name = u8R"(tmp)"sv;
+		const string_view $this_table_name = u8R"(tmp)"sv;
 		inline const string_view & get_this_table_name() const {
 			return $this_table_name;
 		}
@@ -271,13 +271,13 @@ namespace {
 
 #if defined(DEBUG_THIS_LIB)
 					lua_rawgeti(arg, varThisTableIndex, 1);
-					std::cout << "+==========" << std::endl;
+					std::cout << "+=========="sv << std::endl;
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 2);
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 3);
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
-					std::cout << "+==========" << std::endl;
+					std::cout << "+=========="sv << std::endl;
 #endif
 
 					/*移除不用的值*/
@@ -299,13 +299,13 @@ namespace {
 					}
 #if defined(DEBUG_THIS_LIB)
 					lua_rawgeti(arg, varThisTableIndex, 1);
-					std::cout << "===========" << std::endl;
+					std::cout << "==========="sv << std::endl;
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 2);
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
 					lua_rawgeti(arg, varThisTableIndex, 3);
 					std::cout << debug_type_value(arg, lua_gettop(arg)) << std::endl;
-					std::cout << "===========" << std::endl;
+					std::cout << "==========="sv << std::endl;
 #endif
 					lua_settop(arg, arg.$UserKeyIndex);
 				}
@@ -1138,14 +1138,15 @@ namespace {
 		}
 
 		void print_value_function() {
-			return $Writer.write(u8R"(""function"")"sv);
+			return $Writer.write(u8R"("function")"sv);
 		}
 
 		void print_value_userdata() {
+			return $Writer.write(u8R"("userdata")"sv);
 		}
 
 		void print_value_thread() {
-			return $Writer.write(u8R"(""thread"")"sv);
+			return $Writer.write(u8R"("thread")"sv);
 		}
 
 		void print_value_numtags() {
@@ -1211,10 +1212,29 @@ namespace {
 
 				varCurrent.pop(*this);
 				while (lua_next(*this, $UserTableIndex)) {
-					const auto varType = lua_type(*this, $UserValueIndex);
+					auto varType = lua_type(*this, $UserValueIndex);
+					/**********************************************/
+					do {
+						/*如果是可序列化类型,则继续...*/
+						if ((varType == LUA_TBOOLEAN) ||
+							(varType == LUA_TNUMBER) ||
+							(varType == LUA_TSTRING) ||
+							(varType == LUA_TTABLE)
+							) {break;}
+						const auto varTop = lua_gettop(*this);
+						/*then try __tostring*/
+						if (luaL_callmeta(*this, this->$UserValueIndex , "__tostring") &&
+							(lua_type(*this, -1) == LUA_TSTRING)) {
+							varType = LUA_TSTRING;
+							lua_copy(*this,-1, this->$UserValueIndex);
+						}
+						/*remove the data do not used*/
+						lua_settop(*this,varTop);
+					} while (false);
+					/**********************************************/
 					switch (varType) {
 					case  LUA_TNONE: {/*跳过none*/ break; }break;
-					case  LUA_TNIL: { /*跳过nil*/break; } break;
+					case  LUA_TNIL: { /*跳过nil*/  break; } break;
 					case  LUA_TBOOLEAN: {
 						if (false == this->print_name(&varCurrent)) break;
 						if (false == varCurrent.$TableArrayContinue) this->print_equal();
@@ -1222,7 +1242,7 @@ namespace {
 						this->print_endl();
 					}break;
 					case  LUA_TLIGHTUSERDATA: {
-						/*跳过 light user data*/ break;
+						/*跳过 light user data*/ // break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_lightuserdata();
@@ -1248,28 +1268,28 @@ namespace {
 						goto next_table;
 					}break;
 					case  LUA_TFUNCTION: {
-						/*跳过 function*/ break;
+						/*跳过 function*/ // break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_function();
 						this->print_endl();
 					}break;
 					case  LUA_TUSERDATA: {
-						/*跳过 user data*/ break;
+						/*跳过 user data*/ // break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_userdata();
 						this->print_endl();
 					}break;
 					case  LUA_TTHREAD: {
-						/*跳过 thread*/ break;
+						/*跳过 thread*/ // break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_thread();
 						this->print_endl();
 					}break;
 					case  LUA_NUMTAGS: {
-						/*跳过 numtags*/ break;
+						/*跳过 numtags*/ // break;
 						if (false == this->print_name(&varCurrent))break;
 						if (false == varCurrent.$TableArrayContinue)this->print_equal();
 						this->print_value_numtags();
