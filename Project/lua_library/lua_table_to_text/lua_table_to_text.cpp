@@ -691,6 +691,9 @@ namespace {
 					case  LUA_TTHREAD: {return false; }break;
 					}
 					d = luaL_tolstring(*this, $UserKeyIndex, &n);
+					if (this->is_simple_string({ d,n }) == false) {
+						return false;
+					}
 				}
 
 				if (n > 0) {
@@ -772,6 +775,9 @@ namespace {
 					case  LUA_TTHREAD: {return false; }break;
 					}
 					d = luaL_tolstring(*this, varTableNamePos, &n);
+					if (this->is_simple_string({d,n})==false) {
+						return false;
+					}
 				}
 
 				if (n > 0) {
