@@ -1862,7 +1862,7 @@ namespace {
 					if (arg.empty()) { return {}; }
 					auto varCanWrite = ($buffer_end > $buffer_pos) ?
 						static_cast<std::size_t>($buffer_end - $buffer_pos)
-						: 0;
+						: static_cast<std::size_t>(0);
 
 					if (varCanWrite < 1) {
 						this->push_data_to_buffer();
