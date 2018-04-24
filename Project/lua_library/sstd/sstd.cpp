@@ -11,14 +11,18 @@ LUA_API int sstd_print_table_by_std_ofstream(lua_State *L);
 LUA_API int sstd_print_table_by_std_cout(lua_State *L);
 LUA_API int sstd_full_print_table_by_std_ofstream(lua_State *L);
 LUA_API int sstd_full_print_table_by_std_cout(lua_State *L);
+LUA_API int sstd_full_print_table_to_string(lua_State *L);
+LUA_API int sstd_print_table_to_string(lua_State *L);
 
 namespace {
 
 	static constexpr const luaL_Reg sstd_libs[] = {
-	{ u8R"(tofile)" ,&sstd_print_table_by_std_ofstream },
+	{ u8R"(tfile)" ,&sstd_print_table_by_std_ofstream },
 	{ u8R"(tcout)" ,&sstd_print_table_by_std_cout },
 	{ u8R"(ftfile)" ,&sstd_full_print_table_by_std_ofstream },
 	{ u8R"(ftcout)" ,&sstd_full_print_table_by_std_cout },
+	{ u8R"(ftstring)" ,&sstd_full_print_table_to_string },
+	{ u8R"(tstring)" ,&sstd_print_table_to_string },
 	{ nullptr, nullptr },
 	};
 

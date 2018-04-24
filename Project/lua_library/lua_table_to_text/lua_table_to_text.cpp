@@ -373,7 +373,7 @@ namespace {
 				}
 				else {
 					/*
-					double to index is ill format 
+					double to index is ill format
 					this may be a error
 					*/
 					const auto varAns1 = this->double_to_string(lua_tonumber(*this, varNameIndex));
@@ -452,7 +452,7 @@ namespace {
 
 		string get_full_table_name(TableItem*arg) {
 			/*如果是Root，则返回tmp*/
-			if ((arg->$Parent)==nullptr) {
+			if ((arg->$Parent) == nullptr) {
 				return { this->get_this_table_name().data(),this->get_this_table_name().size() };
 			}
 
@@ -604,6 +604,7 @@ namespace {
 		~LuaLock() {
 			if ($ReturnClearIndex == $ErrorStringIndex) { return; }
 			lua_settop($L, $ReturnClearIndex);
+			$Writer.write_finished();
 		}
 
 		void clear(const string_view & argTableName) {
@@ -674,13 +675,13 @@ namespace {
 				std::size_t n = 0;
 				const char * d = nullptr;
 
-				if ( lua_type(*this, $UserKeyIndex) == LUA_TSTRING ) {
+				if (lua_type(*this, $UserKeyIndex) == LUA_TSTRING) {
 					d = lua_tolstring(*this, $UserKeyIndex, &n);
 				}
 				else {
 					d = luaL_tolstring(*this, $UserKeyIndex, &n);
 				}
-	 
+
 				if (n > 0) {
 					this->_p_print_value_string<false>({ d,n });
 					return true;
@@ -1534,7 +1535,7 @@ namespace {
 
 			/*
 			1 : key
-			2 : table 
+			2 : table
 			*/
 			inline void push_create(const Pack & arg) {
 
@@ -1549,7 +1550,7 @@ namespace {
 				}
 				/*
 				index table  索引表
-				this table   
+				this table
 				parent table key
 				parent table
 				*/
@@ -1599,7 +1600,7 @@ namespace {
 
 		Pack varPack{ *L };
 
-		lua_createtable(*L, concept_min_tmp_table_size(),0);
+		lua_createtable(*L, concept_min_tmp_table_size(), 0);
 		varPack.$TmpTableIndex = lua_gettop(*L);
 
 		lua_pushvalue(*L, L->$TableIndex);
@@ -1703,10 +1704,11 @@ namespace {
 		template<bool V, typename TWriter>
 		class WrapWriter {
 		public:
-			const std::unique_ptr<TWriter> __$Writer;
+			unique_ptr<TWriter> __$Writer;
 			template<typename ... Args>
-			WrapWriter(Args && ... args) :__$Writer( make_unique<TWriter>(std::forward<Args>(args)...) ) {}
+			WrapWriter(Args && ... args) :__$Writer(make_unique<TWriter>(std::forward<Args>(args)...)) {}
 			void write(const string_view & arg) { __$Writer->write(arg); }
+			inline void write_finished() { __$Writer->write_finished(); }
 			constexpr const static bool value = V;
 		};
 
@@ -1717,12 +1719,12 @@ namespace {
 		template<bool V, typename _Writer, typename ... Args>
 		static inline int _p_print_table(lua_State * L, Args && ...args) {
 
-			using Writer = WrapWriter<V, _Writer>;
+			using Writerx = WrapWriter<V, _Writer>;
 
 			const auto varInputTop = lua_gettop(L);
 
 			if (lua_istable(L, varInputTop)) {
-				auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
+				auto var = make_unique<LuaLock<Writerx>/*space*/>(L, Writerx{ std::forward<Args>(args)... });
 				var->print_table({});
 			}
 			else {
@@ -1753,7 +1755,7 @@ namespace {
 						并且保证字符串地址有效...
 						*/
 						lua_pushvalue(L, varTableIndex);
-						auto var = make_unique<LuaLock<Writer>/*space*/>(L, Writer{ std::forward<Args>(args)... });
+						auto var = make_unique<LuaLock<Writerx>/*space*/>(L, Writerx{ std::forward<Args>(args)... });
 						/*we do not check the table name is error or not*/
 						var->print_table({ varAns,n });
 					}
@@ -1779,87 +1781,179 @@ namespace {
 	*/
 	template<bool V>
 	static inline int _print_table_by_std_cout(lua_State * L) {
-		class Writer {
-		public:
-			inline void write(const string_view &arg) {
-				std::cout << arg;
-			}
-		};
-		return easy::writer::_p_print_table<V, Writer>(L);
-	}/*print_table_by_std_cout*/
-
-	 /*
-	 input table/tablename or table
-	 out put a string 
-	 */
-	static inline int _print_table_to_string(lua_State * L) {
 		{
-			constexpr const static bool V = false;
 			class Writer {
 			public:
 				inline void write(const string_view &arg) {
 					std::cout << arg;
 				}
+				inline void write_finished() {}
+			};
+			easy::writer::_p_print_table<V, Writer>(L);
+		}
+		return 0;
+	}/*print_table_by_std_cout*/
+
+	 /*
+	 input table/tablename or table
+	 out put a string
+	 */
+	constexpr const static int _ptts_buffer_size() { return 1024 * 1023; }
+	template<bool Vxx>
+	static inline int _print_table_to_string(lua_State * L) {
+		{
+			constexpr const static bool V = Vxx ;
+			class Writer {
+			public:
 				lua_State * const L;
-				Writer(lua_State*arg):L(arg) {}
+
+				class  BufferPack {
+				public:
+					std::array<char, _ptts_buffer_size()> $raw_data;
+					string_view $data = {};
+				};
+				list< BufferPack > $data;
+
+				char * $buffer_end;
+				char * $buffer_begin;
+				char * $buffer_pos;
+
+				/*更新buffer索引值*/
+				inline void push_data_to_buffer() {
+					const auto varDataSize = static_cast<std::size_t>($buffer_pos - $buffer_begin);
+					auto & varBuffer = *$data.rbegin();
+					if (varDataSize < 1) { 
+						varBuffer.$data = {};
+						return; 
+					}
+					varBuffer.$data = { varBuffer.$raw_data.data() ,varDataSize };
+				}
+
+				string_view _p_write(const string_view &arg) {
+				try_next:
+					if (arg.empty()) { return {}; }
+					 auto varCanWrite = ($buffer_end>$buffer_pos)? 
+						 static_cast<std::size_t>($buffer_end - $buffer_pos)
+						 :0;
+
+					 if (varCanWrite < 1) { 
+						 this->push_data_to_buffer();
+						 this->new_buffer();
+						 goto try_next;
+					 }
+
+					 if (varCanWrite>=arg.size()) {
+						 std::memcpy($buffer_pos,arg.data(),arg.size());
+						 $buffer_pos += arg.size();
+						 return {};
+					 }
+
+					 std::memcpy($buffer_pos, arg.data(), varCanWrite);
+					 $buffer_pos  = $buffer_end ;
+
+					 return arg.substr(varCanWrite,arg.size()-varCanWrite);
+				}
+
+				inline void write(string_view arg) {
+					if (arg.empty()) { return; }
+					do {
+						arg = _p_write(arg);
+					} while (arg.empty()==false);
+				}
+
+				inline void write_finished() {
+					push_data_to_buffer();
+					std::size_t varLength = 0;
+					for (const auto & varI : $data) {
+						varLength += varI.$data.size();
+					}
+
+					if (varLength==0) {
+						lua_pushlstring(L,nullptr,0);
+						return;
+					}
+
+					if ($data.size()==1) {
+						const auto & var = (*$data.rbegin()).$data;
+						lua_pushlstring(L, var.data(), var.size());
+						return;
+					}
+
+					luaL_Buffer varLuaBuffer;
+					luaL_buffinitsize(L,&varLuaBuffer,varLength+4);
+					for (const auto & varI : $data) {
+						const auto & var = varI.$data;
+						luaL_addlstring(&varLuaBuffer,var.data(),var.size());
+					}
+					luaL_pushresult(&varLuaBuffer);
+				}
+
+				inline void new_buffer() {
+					auto & varBuffer = $data.emplace_back();
+					$buffer_begin = varBuffer.$raw_data.data();
+					$buffer_end = $buffer_begin + varBuffer.$raw_data.size();
+					$buffer_pos = $buffer_begin;
+				}
+
+				Writer(lua_State*arg) :L(arg) {
+					this->new_buffer();
+				}
+
 				Writer(Writer&&) = delete;
 				Writer(const Writer&) = delete;
 				Writer&operator=(Writer&&) = delete;
 				Writer&operator=(const Writer&) = delete;
 			};
-			easy::writer::_p_print_table<V, Writer>(L,L);
+			easy::writer::_p_print_table<V, Writer>(L, L);
 		}
 		return 1;
 	}
 
-	 /*
-	 input table/tablename filename or table filename
-	 no output
-	 */
+	/*
+	input table/tablename filename or table filename
+	no output
+	*/
 	template<bool V>
 	static inline int _print_table_by_std_ofstream(lua_State *L) {
-
-		class Writer {
-			unique_ptr<std::ofstream> outer;
-		public:
-			inline void write(const std::string_view &arg) {
-				(*outer) << arg;
-			}
-			Writer(lua_State *L, const std::string_view &arg) {
-				outer = make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
-				if (outer->is_open() == false) {
-					easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
-					lua_error(L);
+		{
+			class Writer {
+				unique_ptr<std::ofstream> outer;
+			public:
+				inline void write(const std::string_view &arg) {
+					(*outer) << arg;
 				}
-			}
-		};
+				inline void write_finished() {}
+				Writer(lua_State *L, const std::string_view &arg) {
+					outer = make_unique<std::ofstream>(arg.data(), std::ios::binary | std::ios::out);
+					if (outer->is_open() == false) {
+						easy::writer::__p_push_string(L, u8R"(can not open file)"sv);
+						lua_error(L);
+					}
+				}
+			};
 
-		std::size_t n = 0;
-		const auto varTop = lua_gettop(L);
-		if (varTop < 2) {
-			easy::writer::__p_push_string(L, u8R"(input too less)"sv);
-			lua_error(L);
-		}
-		const auto data = luaL_tolstring(L, -1, &n);
-		if (n > 0) {
-			/*将Lua值拷贝到C++，确保数据地址有效*/
-			const string varTmpData{ data,n };
-			lua_settop(L, varTop - 1);
-			return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
-		}
-		else {
-			easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
-			lua_error(L);
+			std::size_t n = 0;
+			const auto varTop = lua_gettop(L);
+			if (varTop < 2) {
+				easy::writer::__p_push_string(L, u8R"(input too less)"sv);
+				lua_error(L);
+			}
+			const auto data = luaL_tolstring(L, -1, &n);
+			if (n > 0) {
+				/*将Lua值拷贝到C++，确保数据地址有效*/
+				const string varTmpData{ data,n };
+				lua_settop(L, varTop - 1);
+				return easy::writer::_p_print_table<V, Writer>(L, L, varTmpData);
+			}
+			else {
+				easy::writer::__p_push_string(L, u8R"(can not find output file name)"sv);
+				lua_error(L);
+			}
 		}
 		return 0;
 	}
 
 }/*namespace*/
-
-LUA_API int sstd_print_table_by_std_ofstream(lua_State *L);
-LUA_API int sstd_print_table_by_std_cout(lua_State *L);
-LUA_API int sstd_full_print_table_by_std_ofstream(lua_State *L);
-LUA_API int sstd_full_print_table_by_std_cout(lua_State *L);
 
 LUA_API int sstd_print_table_by_std_ofstream(lua_State *L) {
 	return _print_table_by_std_ofstream<false>(L);
@@ -1875,6 +1969,14 @@ LUA_API int sstd_full_print_table_by_std_ofstream(lua_State *L) {
 
 LUA_API int sstd_full_print_table_by_std_cout(lua_State *L) {
 	return _print_table_by_std_cout<true>(L);
+}
+
+LUA_API int sstd_full_print_table_to_string(lua_State *L) {
+	return _print_table_to_string<true>(L);
+}
+
+LUA_API int sstd_print_table_to_string(lua_State *L) {
+	return _print_table_to_string<false>(L);
 }
 
 #endif
