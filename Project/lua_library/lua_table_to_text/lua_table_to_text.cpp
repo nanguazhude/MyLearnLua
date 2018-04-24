@@ -1700,17 +1700,20 @@ return tmp;
 namespace {
 	namespace easy::writer {
 
-		template<bool V, typename T>
-		class WrapWriter :public T {
+		template<bool V, typename TWriter>
+		class WrapWriter {
 		public:
+			const std::unique_ptr<TWriter> __$Writer;
 			template<typename ... Args>
-			WrapWriter(Args && ... args) : T(std::forward<Args>(args)...) {}
+			WrapWriter(Args && ... args) :__$Writer( make_unique<TWriter>(std::forward<Args>(args)...) ) {}
+			void write(const string_view & arg) { __$Writer->write(arg); }
 			constexpr const static bool value = V;
 		};
 
 		static inline void __p_push_string(lua_State *L, const string_view &arg) {
 			lua_pushlstring(L, arg.data(), arg.size());
 		}
+
 		template<bool V, typename _Writer, typename ... Args>
 		static inline int _p_print_table(lua_State * L, Args && ...args) {
 
@@ -1784,6 +1787,30 @@ namespace {
 		};
 		return easy::writer::_p_print_table<V, Writer>(L);
 	}/*print_table_by_std_cout*/
+
+	 /*
+	 input table/tablename or table
+	 out put a string 
+	 */
+	static inline int _print_table_to_string(lua_State * L) {
+		{
+			constexpr const static bool V = false;
+			class Writer {
+			public:
+				inline void write(const string_view &arg) {
+					std::cout << arg;
+				}
+				lua_State * const L;
+				Writer(lua_State*arg):L(arg) {}
+				Writer(Writer&&) = delete;
+				Writer(const Writer&) = delete;
+				Writer&operator=(Writer&&) = delete;
+				Writer&operator=(const Writer&) = delete;
+			};
+			easy::writer::_p_print_table<V, Writer>(L,L);
+		}
+		return 1;
+	}
 
 	 /*
 	 input table/tablename filename or table filename
