@@ -519,7 +519,7 @@ namespace {
 				lldiv_t varTmp;
 				varTmp.quot = data;
 				do {
-					varTmp = std::lldiv(varTmp.quot, 10);
+					varTmp = std::lldiv(varTmp.quot, 10LL);
 					switch (varTmp.rem) {
 					case 0:*varPointer = '0'; break;
 					case 1:*varPointer = '1'; break;
