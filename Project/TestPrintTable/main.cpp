@@ -74,12 +74,36 @@ sstd.ftcout( a );
 
 }/*void test code 3*/
 
+inline void test_code4() {
+
+	lua_State * L = luaL_newstate();
+	luaL_openlibs(L);
+
+	luaL_dostring(L, u8R"!!!!!!!(
+
+a={ test4 = 0; } ;
+a.b={} ;
+a.c=a.b ;
+a.d=a ;
+
+print("---------------------")
+print( sstd.tstring( a ) );
+print("+--------------------")
+print( sstd.ftstring( a ) );
+
+)!!!!!!!");
+
+	lua_close(L);
+
+}/*void test code 4*/
+
 int main(int argc, char *argv[]){
     QApplication app(argc, argv);
 
 	test_code1();
 	test_code2();
 	test_code3();
+	test_code4();
 
     MainWindow window;
     window.show();
