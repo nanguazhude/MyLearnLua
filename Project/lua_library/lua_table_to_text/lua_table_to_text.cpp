@@ -541,7 +541,7 @@ namespace {
 				--varPointer;
 			}
 
-			return { varPointer + 1, static_cast<std::size_t>(varPointerEnd - varPointer ) };
+			return { varPointer + 1, static_cast<std::size_t>(varPointerEnd - varPointer) };
 		}
 
 		/*double to string*/
@@ -675,10 +675,21 @@ namespace {
 				std::size_t n = 0;
 				const char * d = nullptr;
 
-				if (lua_type(*this, $UserKeyIndex) == LUA_TSTRING) {
+				if (varType == LUA_TSTRING) {
 					d = lua_tolstring(*this, $UserKeyIndex, &n);
 				}
 				else {
+					switch (varType) {
+					case  LUA_TNIL: {return false; }break;
+					case  LUA_TBOOLEAN: {return false; }break;
+					case  LUA_TLIGHTUSERDATA: {return false; }break;
+					case  LUA_TNUMBER: {/*true*/}break;
+					case  LUA_TSTRING: {/*true*/}break;
+					case  LUA_TTABLE: {}break;
+					case  LUA_TFUNCTION: {}break;
+					case  LUA_TUSERDATA: {}break;
+					case  LUA_TTHREAD: {return false; }break;
+					}
 					d = luaL_tolstring(*this, $UserKeyIndex, &n);
 				}
 
@@ -745,10 +756,21 @@ namespace {
 				std::size_t n = 0;
 				const char * d = nullptr;
 
-				if (lua_type(*this, varTableNamePos) == LUA_TSTRING) {
+				if (varType == LUA_TSTRING) {
 					d = lua_tolstring(*this, varTableNamePos, &n);
 				}
 				else {
+					switch (varType) {
+					case  LUA_TNIL: {return false; }break;
+					case  LUA_TBOOLEAN: {return false; }break;
+					case  LUA_TLIGHTUSERDATA: {return false; }break;
+					case  LUA_TNUMBER: {/*true*/}break;
+					case  LUA_TSTRING: {/*true*/}break;
+					case  LUA_TTABLE: {}break;
+					case  LUA_TFUNCTION: {}break;
+					case  LUA_TUSERDATA: {}break;
+					case  LUA_TTHREAD: {return false; }break;
+					}
 					d = luaL_tolstring(*this, varTableNamePos, &n);
 				}
 
@@ -1682,8 +1704,8 @@ return tmp;
 return tmp;
 --[[ endl of the table --]]
 )"sv);
-		}
 	}
+}
 
 #if defined(QUICK_CHECK_CODE)
 	static inline void lua_table_to_text(lua_State * argL, const string_view & argTableName) {
@@ -1802,7 +1824,7 @@ namespace {
 	template<bool Vxx>
 	static inline int _print_table_to_string(lua_State * L) {
 		{
-			constexpr const static bool V = Vxx ;
+			constexpr const static bool V = Vxx;
 			class Writer {
 			public:
 				lua_State * const L;
@@ -1822,9 +1844,9 @@ namespace {
 				inline void push_data_to_buffer() {
 					const auto varDataSize = static_cast<std::size_t>($buffer_pos - $buffer_begin);
 					auto & varBuffer = *$data.rbegin();
-					if (varDataSize < 1) { 
+					if (varDataSize < 1) {
 						varBuffer.$data = {};
-						return; 
+						return;
 					}
 					varBuffer.$data = { varBuffer.$raw_data.data() ,varDataSize };
 				}
@@ -1832,33 +1854,33 @@ namespace {
 				string_view _p_write(const string_view &arg) {
 				try_next:
 					if (arg.empty()) { return {}; }
-					 auto varCanWrite = ($buffer_end>$buffer_pos)? 
-						 static_cast<std::size_t>($buffer_end - $buffer_pos)
-						 :0;
+					auto varCanWrite = ($buffer_end > $buffer_pos) ?
+						static_cast<std::size_t>($buffer_end - $buffer_pos)
+						: 0;
 
-					 if (varCanWrite < 1) { 
-						 this->push_data_to_buffer();
-						 this->new_buffer();
-						 goto try_next;
-					 }
+					if (varCanWrite < 1) {
+						this->push_data_to_buffer();
+						this->new_buffer();
+						goto try_next;
+					}
 
-					 if (varCanWrite>=arg.size()) {
-						 std::memcpy($buffer_pos,arg.data(),arg.size());
-						 $buffer_pos += arg.size();
-						 return {};
-					 }
+					if (varCanWrite >= arg.size()) {
+						std::memcpy($buffer_pos, arg.data(), arg.size());
+						$buffer_pos += arg.size();
+						return {};
+					}
 
-					 std::memcpy($buffer_pos, arg.data(), varCanWrite);
-					 $buffer_pos  = $buffer_end ;
+					std::memcpy($buffer_pos, arg.data(), varCanWrite);
+					$buffer_pos = $buffer_end;
 
-					 return arg.substr(varCanWrite,arg.size()-varCanWrite);
+					return arg.substr(varCanWrite, arg.size() - varCanWrite);
 				}
 
 				inline void write(string_view arg) {
 					if (arg.empty()) { return; }
 					do {
 						arg = _p_write(arg);
-					} while (arg.empty()==false);
+					} while (arg.empty() == false);
 				}
 
 				inline void write_finished() {
@@ -1868,22 +1890,22 @@ namespace {
 						varLength += varI.$data.size();
 					}
 
-					if (varLength==0) {
-						lua_pushlstring(L,nullptr,0);
+					if (varLength == 0) {
+						lua_pushlstring(L, nullptr, 0);
 						return;
 					}
 
-					if ($data.size()==1) {
+					if ($data.size() == 1) {
 						const auto & var = (*$data.rbegin()).$data;
 						lua_pushlstring(L, var.data(), var.size());
 						return;
 					}
 
 					luaL_Buffer varLuaBuffer;
-					luaL_buffinitsize(L,&varLuaBuffer,varLength+4);
+					luaL_buffinitsize(L, &varLuaBuffer, varLength + 4);
 					for (const auto & varI : $data) {
 						const auto & var = varI.$data;
-						luaL_addlstring(&varLuaBuffer,var.data(),var.size());
+						luaL_addlstring(&varLuaBuffer, var.data(), var.size());
 					}
 					luaL_pushresult(&varLuaBuffer);
 				}
