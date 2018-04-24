@@ -541,7 +541,7 @@ namespace {
 				--varPointer;
 			}
 
-			return { varPointer + 1, static_cast<std::size_t>(varPointer - varPointerEnd) };
+			return { varPointer + 1, static_cast<std::size_t>(varPointerEnd - varPointer ) };
 		}
 
 		/*double to string*/

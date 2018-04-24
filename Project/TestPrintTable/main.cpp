@@ -97,13 +97,35 @@ print( sstd.ftstring( a ) );
 
 }/*void test code 4*/
 
+inline void test_code5() {
+	lua_State * L = luaL_newstate();
+	luaL_openlibs(L);
+
+	lua_createtable(L,2,2);
+	lua_pushinteger(L,12);
+	lua_rawsetp(L,-2,L);
+	lua_setglobal(L,u8R"(a)");
+
+	luaL_dostring(L, u8R"!!!!!!!(
+
+print("---------------------")
+print( sstd.tstring( a ) );
+print("+--------------------")
+print( sstd.ftstring( a ) );
+
+)!!!!!!!");
+
+	lua_close(L);
+}/*void test code 5*/
+
 int main(int argc, char *argv[]){
     QApplication app(argc, argv);
 
-	test_code1();
-	test_code2();
-	test_code3();
-	test_code4();
+	//test_code1();
+	//test_code2();
+	//test_code3();
+	//test_code4();
+	test_code5();
 
     MainWindow window;
     window.show();
