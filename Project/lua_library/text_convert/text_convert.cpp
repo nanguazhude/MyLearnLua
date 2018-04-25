@@ -5,10 +5,8 @@
 #include <memory>
 #include "text_convert.hpp"
 
-#include <string>
 #include <string_view>
-using namespace std::string_literals;
-using namespace std;
+using namespace std::string_view_literals;
 
 #if defined( _WIN32 )||defined(WIN32)
 #define Windows_Like_Value (1)

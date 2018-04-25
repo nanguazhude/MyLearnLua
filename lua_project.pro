@@ -12,3 +12,7 @@ test_table_to_text.file = $$PWD/Project/TestPrintTable/TestPrintTable.pro
 test_table_to_text.depends += lua_library
 SUBDIRS += test_table_to_text
 
+test_text_convert.file = $$PWD/Project/TestTextConvert/TestTextConvert.pro
+test_text_convert.depends += lua_library
+SUBDIRS += test_text_convert
+
