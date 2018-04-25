@@ -107,7 +107,8 @@ LUA_API int LuaFileSystemPath::create_path(lua_State*L) {
 		}
 	}
 
-	if (varInput > 0) {/*if have input then create object*/
+	if ((varInput == 0) || ((varInput == 1) && (varType == LUA_TTABLE))) {
+		/*if have no input ,or it called as table:new() then create it*/
 		::new(lua_newuserdata(L, sizeof(LuaFileSystemPath*)))
 			LuaFileSystemPath*{ new LuaFileSystemPath() };
 		create_path_make_mtable(L, lua_gettop(L));

@@ -36,7 +36,7 @@ LUAMOD_API int sstd_open(lua_State *L) {
 	const auto varLibrary = lua_gettop(L);
 	/******************************************/
 	{
-		lua_newtable(L);
+		lua_createtable(L,0,2);
 		const auto varTable = varLibrary + 1;
 		lua_pushvalue(L,varTable);
 		lua_setfield(L, varLibrary, "filesystem");
