@@ -17,6 +17,7 @@ namespace {
 	inline void pushlstring(lua_State*L, const std::string_view &e) {
 		lua_pushlstring(L, e.data(), e.size());
 	}
+
 }/**/
 
 LUA_API LuaFileSystemPath::LuaFileSystemPath(const std::string_view&d) :
@@ -27,6 +28,19 @@ namespace {
 	constexpr const char * meta_table_name() {
 		return "sstd::filesystem::path";
 	}
+
+	inline LuaFileSystemPath *meta_pointer(lua_State*L, int index) {
+		return reinterpret_cast<LuaFileSystemPath *>(
+			*reinterpret_cast<void **>(
+				luaL_checkudata(L, index, meta_table_name())));
+	}
+
+	inline LuaFileSystemPath *test_meta_pointer(lua_State*L, int index) {
+		return reinterpret_cast<LuaFileSystemPath *>(
+			*reinterpret_cast<void **>(
+				luaL_testudata(L, index, meta_table_name())));
+	}
+
 }
 
 LUA_API int LuaFileSystemPath::register_this(lua_State*L) {
@@ -61,18 +75,14 @@ namespace {
 }/*namespace*/
 
 LUA_API int LuaFileSystemPath::get_meta_table_name(lua_State*L) {
-	auto varP = reinterpret_cast<LuaFileSystemPath *>(
-		*reinterpret_cast<void **>(
-			luaL_checkudata(L, lua_gettop(L), meta_table_name())));
+	auto varP = meta_pointer(L, lua_gettop(L));
 	pushlstring(L, meta_table_name());
 	(void)varP;
 	return 1;
 }
 
 LUA_API int LuaFileSystemPath::destory(lua_State*L) {
-	auto varP = reinterpret_cast<LuaFileSystemPath *>(
-		*reinterpret_cast<void **>(
-			luaL_checkudata(L, lua_gettop(L), meta_table_name())));
+	auto varP = meta_pointer(L, lua_gettop(L));
 	delete varP;
 	return 0;
 }
@@ -96,9 +106,7 @@ LUA_API int LuaFileSystemPath::create_path(lua_State*L) {
 		return 1;
 	}
 	else if (varType == LUA_TUSERDATA) {/*copy create*/
-		auto varP = reinterpret_cast<LuaFileSystemPath *>(
-			*reinterpret_cast<void **>(
-				luaL_testudata(L, varInput, meta_table_name())));
+		auto varP = test_meta_pointer(L, varInput);
 		if (varP) {
 			::new(lua_newuserdata(L, sizeof(LuaFileSystemPath*)))
 				LuaFileSystemPath*{ new LuaFileSystemPath(*varP) };
