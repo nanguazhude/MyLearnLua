@@ -30,4 +30,4 @@ HEADERS += $$PWD/lzio.hpp
 
 HEADERS += $$PWD/lua_cplusplus_exception/lua_cplusplus_exception.hpp
 HEADERS += $$PWD/lua_table_to_text/lua_table_to_text.hpp
-
+HEADERS += $$PWD/text_convert/text_convert.hpp
