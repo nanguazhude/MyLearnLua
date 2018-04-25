@@ -4,8 +4,7 @@
 #endif
 
 #include "../lua.hpp"
-#include "../lauxlib.hpp"
-#include "../lualib.hpp"
+#include "../filesystem/lua_filesystem.hpp"
 
 LUA_API int sstd_print_table_by_std_ofstream(lua_State *L);
 LUA_API int sstd_print_table_by_std_cout(lua_State *L);
@@ -34,6 +33,19 @@ namespace {
 
 LUAMOD_API int sstd_open(lua_State *L) {
 	luaL_newlib(L, sstd_libs);
+	const auto varLibrary = lua_gettop(L);
+	/******************************************/
+	{
+		lua_newtable(L);
+		const auto varTable = varLibrary + 1;
+		lua_pushvalue(L,varTable);
+		lua_setfield(L, varLibrary, "filesystem");
+		lua_pushcfunction(L,&LuaFileSystemPath::create_path);
+		lua_setfield(L, varTable, "new");
+		lua_settop(L, varLibrary);
+	}
+	/******************************************/
+	lua_settop(L, varLibrary);
 	return 1;
 }
 

@@ -28,6 +28,8 @@ public:
 public:
 	LUA_API static int register_this(lua_State*);
 	LUA_API static int create_path(lua_State*);
+	LUA_API static int destory(lua_State*);
+	LUA_API static int get_meta_table_name(lua_State*);
 };
 
 #endif

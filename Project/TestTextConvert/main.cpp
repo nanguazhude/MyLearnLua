@@ -12,6 +12,8 @@ inline void test_code1() {
 
 print( sstd.utf8tolocal("今天天气很晴朗") );
 
+local x = sstd.filesystem:new("test1");
+
 return 0;
 
 )!!!!!!!");
