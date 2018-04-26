@@ -25,11 +25,18 @@ public:
 	LUA_API LuaFileSystemPath(const std::string_view&) ;
 	inline LuaFileSystemPath(const char *a,std::size_t b)
 		:LuaFileSystemPath(std::string_view{a,b}) {}
+	/*it should encode in utf8*/
+	LUA_API LuaFileSystemPath & assign(const std::string_view&arg); 
+	/*it should encode in utf8*/
+	LUA_API LuaFileSystemPath & append(const std::string_view&);
+	LUA_API LuaFileSystemPath & append(const LuaFileSystemPath &);
 public:
 	LUA_API static int register_this(lua_State*);
 	LUA_API static int create_path(lua_State*);
 	LUA_API static int destory(lua_State*);
 	LUA_API static int get_meta_table_name(lua_State*);
+	LUA_API static int assign(lua_State*);
+	LUA_API static int append(lua_State*);
 };
 
 #endif

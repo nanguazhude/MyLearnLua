@@ -43,6 +43,20 @@ namespace {
 
 }
 
+LUA_API LuaFileSystemPath & LuaFileSystemPath::assign(const std::string_view & arg) {
+	return (*this = LuaFileSystemPath{ arg });
+}
+
+LUA_API LuaFileSystemPath & LuaFileSystemPath::append(const std::string_view &arg) {
+	_m_path.append(LuaFileSystemPath{ arg });
+	return *this;
+}
+
+LUA_API LuaFileSystemPath & LuaFileSystemPath::append(const LuaFileSystemPath &arg) {
+	_m_path.append(arg._m_path);
+	return *this;
+}
+
 LUA_API int LuaFileSystemPath::register_this(lua_State*L) {
 	if (luaL_newmetatable(L, meta_table_name())) {
 		const auto varTableIndex = lua_gettop(L);
@@ -78,6 +92,46 @@ LUA_API int LuaFileSystemPath::get_meta_table_name(lua_State*L) {
 	auto varP = meta_pointer(L, lua_gettop(L));
 	pushlstring(L, meta_table_name());
 	(void)varP;
+	return 1;
+}
+
+LUA_API int LuaFileSystemPath::assign(lua_State *L) {
+	const auto varTop = lua_gettop(L);
+	const auto varType = lua_type(L, varTop);
+	auto varP = meta_pointer(L, varTop - 1);
+	const char *d = nullptr;
+	std::size_t n = 0;
+	if (varType == LUA_TSTRING) {
+		d = lua_tolstring(L, varTop, &n);
+	}
+	else {
+		d = luaL_tolstring(L, varTop, &n);
+	}
+	varP->assign({ d,n });
+	lua_settop(L, varTop - 1);
+	return 1;
+}
+
+LUA_API int LuaFileSystemPath::append(lua_State *L){
+	const auto varTop = lua_gettop(L);
+	auto varP = meta_pointer(L, varTop-1);
+	auto varI = test_meta_pointer(L,varTop);
+	if (varI) {
+		varP->append(*varI);
+	}
+	else {
+		const auto varType = lua_type(L, varTop);
+		const char *d = nullptr;
+		std::size_t n = 0;
+		if (varType == LUA_TSTRING) {
+			d = lua_tolstring(L, varTop, &n);
+		}
+		else {
+			d = luaL_tolstring(L, varTop, &n);
+		}
+		varP->append(std::string_view{d,n});
+	}
+	lua_settop(L,varTop-1);
 	return 1;
 }
 
